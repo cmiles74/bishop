@@ -9,9 +9,7 @@
 ;;
 (ns com.tnrglobal.bishop.core
   (:use [com.tnrglobal.bishop.flow]
-        [com.tnrglobal.bishop.resource]
-        [ring.middleware.reload]
-        [ring.middleware.stacktrace])
+        [com.tnrglobal.bishop.resource])
   (:require [clojure.string :as string]))
 
 
@@ -19,14 +17,103 @@
   "Returns a sequence of tokens for the provided URI."
   [uri]
 
-  ;; trim all of our tokens
-  (map #(.trim %)
+  ;; trim all of our tokens and return a vector
+  (vec (map #(.trim %)
 
-       ;; filter out empty tokens (i.e. leading "/" or "//")
-       (filter #(< 0 (count (.trim %)))
+            ;; filter out empty tokens (i.e. leading "/" or "//")
+            (filter #(< 0 (count (.trim %)))
 
-               ;; split our URI on the slashes
-               (string/split uri #"/"))))
+                    ;; split our URI on the slashes
+                    (string/split uri #"/")))))
+
+(defn match-route
+  "Attempts to match the provided route to the provided URI tokens. If
+  the route can be successfully applied to the URI tokens, a map is
+  returned that contains the URI tokens, matched route and a map of
+  the the route's keyword tokens to their respective URI tokens. If
+  the route cannot be applied then nil is returned."
+  [uri-tokens route-and-handler]
+
+  ;; we only need the route
+  (let [route (first route-and-handler)]
+
+       ;; the route can only match if it has the same number of tokens as
+       ;; the URI or if it has the same number or less and it's last token
+       ;; is a wildcard
+       (if (or (= (count route) (count uri-tokens))
+               (and (>= (count uri-tokens) (count route))
+                    (= "*" (last route))))
+
+         ;; if the route is an exact match or consists of only the wildcard
+         ;; token, no processing is necessary
+         (if (or (= route uri-tokens) (= route ["*"]))
+           {:tokens uri-tokens}
+
+           ;; attempt to match the route to the URI tokens
+           (loop [rtoks route utoks (concat uri-tokens [nil]) info {}]
+
+             ;; loop as long as we have an info map and more URI tokens
+             (if (and info (seq (rest utoks)))
+
+               (recur
+
+                ;; either the next route token or a sequence containing the
+                ;; last route token (if it's a "*", it will match the rest
+                ;; of the URI tokens
+                (if (seq (rest rtoks))
+                  (rest rtoks) [(last rtoks)])
+                (rest utoks)
+
+                ;; build up our path map
+                (cond
+
+                  ;; if the route token is a keyword then it maps to this
+                  ;; URI token
+                  (keyword? (first rtoks))
+                  (assoc info (first rtoks) (first utoks))
+
+                  ;; if the route and URI tokens match, we can continue to
+                  ;; match tokens
+                  (= (first rtoks) (first utoks))
+                  info
+
+                  ;; if the route token is a start then it's a match to
+                  ;; this URI token and we can continue to match tokens
+                  (= "*" (first rtoks))
+                  info
+
+                  ;; this route token doesn't match this URI token meaning
+                  ;; that this route cannot be applied to this URI
+                  :else
+                  nil))
+               (if info
+                 {:tokens uri-tokens
+                  :info info})))))))
+
+(defn select-route
+  "Returns a path info map containing the route that should handle the
+  response for the provided URI tokens, a mapping of route components
+  to URI components and the tokenized URI."
+  [routing-map uri-tokens]
+
+  ;; the first matching route wins
+  (first
+
+   ;; filter out any routes that are nil
+   (filter #(not (nil? %))
+
+           ;; map over all of the routs
+           (map (fn [route-in]
+
+                  ;; try to match the route
+                  (let [path-info (match-route uri-tokens route-in)]
+
+                    ;; if the route matches, return it and it's path
+                    ;; info, otherwise nil
+                    (if path-info [(first route-in) path-info]
+                        nil)))
+
+                routing-map))))
 
 (defn handler
   "Creates a new Bishop handler that will route requests to the
@@ -37,32 +124,44 @@
   ;; return a ring handler function
   (fn [request]
 
-    ;; spit out the request for debugging
-    (print "Request: " (str request))
-
     ;; tokenize the URL
-    (let [uri-tokens (tokenize-uri (:uri request))]
-      (print "\n\nURI Tokens: " (apply str (interpose ", " uri-tokens)) "\n\n")
-
+    (let [route-info (select-route routing-map
+                                   (tokenize-uri (:uri request)))
+          route (if route-info (routing-map (first route-info)) nil)
+          path-info (if route-info (second route-info) nil)]
 
       (cond
 
-        (routing-map uri-tokens)
-        (run request (routing-map uri-tokens))
+        ;; run the route through the state machine
+        (map? route)
+        (try
+          (run (assoc request :path-info path-info) route)
+          (catch Exception exception
+            {:status 400 :body "Malformed message"}))
 
-        (routing-map ["*"])
-        (run request (routing-map ["*"]))
-
+        ;; we have an invalid route, no resource available
         :else
         {:status 404 :body "Resource not found"}))))
 
 (defn resource
-  "Defines a new resource and, optionally, provides a set of functions
-for handling callbacks. The handler map should contain keys named
-after a specific content type 'text/html' and the value stored under
-that key should be a function that will provide the body response for
-the request. This function should be in the form (fn [request
-response] ...)"
+  "Defines a new resource, these come in two different forms:
+
+   1. A map where the keys are different MIME type signatures and
+      their values are mapped to a function that will accept the
+      request map and return data of that type. These represent
+      dynamic responses.
+
+   2. A map where the keys are different MIME type signatures and
+      their values are mapped to a result of that type. This could be
+      a String, binary data, etc. In general these represent static
+      responses.
+
+   In addition to the maps above, you may also pass an optional second
+   parameter that contains a map of callback keys and the values for
+   these keys. You need not define all the keys, only those that you
+   wish to over-ride. Take a look at the com.tnrglobal.bishop.resource
+   file and inspect the 'default-handlers' function for a list of the
+   valid keys and their default values."
   ([response-map handler-map]
 
      ;; combine the default handlers with the map provided
@@ -85,9 +184,3 @@ response] ...)"
   as the body."
   [term]
   (resource [:error term] nil))
-
-(defn app
-  "Creates a new Ring handler representing the Bishop application."
-  [routing-map]
-  (-> (handler routing-map)
-      (wrap-stacktrace)))
