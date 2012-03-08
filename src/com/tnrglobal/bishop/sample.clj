@@ -13,12 +13,12 @@
   (bishop/resource
    {"text/html" (fn [request]
                   (str "<html><body><p>Hello "
-                       (:name (:info (:path-info request)))
+                       (:name (:path-info request))
                        "! at "(Date.)
                        "</p></body></html>\n\n"))
     "text/xml"  (fn [request]
                   (str "<message><text>Hello "
-                       (:name (:tokens (:path-info request)))
+                       (:name (:path-info request))
                        " at "(Date.)
                        "!</text></message>"))}))
 

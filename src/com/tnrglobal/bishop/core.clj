@@ -47,7 +47,7 @@
          ;; if the route is an exact match or consists of only the wildcard
          ;; token, no processing is necessary
          (if (or (= route uri-tokens) (= route ["*"]))
-           {:tokens uri-tokens}
+           {:path-tokens uri-tokens}
 
            ;; attempt to match the route to the URI tokens
            (loop [rtoks route utoks (concat uri-tokens [nil]) info {}]
@@ -87,8 +87,8 @@
                   :else
                   nil))
                (if info
-                 {:tokens uri-tokens
-                  :info info})))))))
+                 {:path-tokens uri-tokens
+                  :path-info info})))))))
 
 (defn select-route
   "Returns a path info map containing the route that should handle the
@@ -135,7 +135,7 @@
         ;; run the route through the state machine
         (map? route)
         (try
-          (run (assoc request :path-info path-info) route)
+          (run (merge request path-info) route)
           (catch Exception exception
             {:status 400 :body "Malformed message"}))
 
