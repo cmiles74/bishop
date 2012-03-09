@@ -1,7 +1,6 @@
 lib
 build
 classes
-test*
 *.jar
 .cake
 pom.xml
@@ -10,5 +9,5 @@ docs
 #*
 *#
 *~
-.lein-deps-sum
+.lein-*
 *.log
