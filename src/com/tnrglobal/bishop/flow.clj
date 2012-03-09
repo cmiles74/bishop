@@ -2,7 +2,8 @@
 ;; Provides the transition table that models the webmachine decision
 ;; tree.
 ;;
-(ns com.tnrglobal.bishop.flow)
+(ns com.tnrglobal.bishop.flow
+  (:import [org.apache.commons.codec.digest DigestUtils]))
 
 (defn decide
   "Calls the provided test function (test-fn). If the function's
@@ -27,8 +28,8 @@
 
 (defn apply-callback
   "Invokes the provided callback function on the supplied resource."
-  [resource callback]
-  (callback (:handlers resource)))
+  [request resource callback]
+  ((callback (:handlers resource)) request))
 
 (defn return-code
   "Returns a function that returns a sequence including the response
@@ -40,22 +41,110 @@
 
 ;; states
 
+(defn response-200
+  "Returns a function that will return a 200 response code and add the
+  provided node (a keyword) to the state."
+  [request response state node]
+  #(return-code 200 request response (assoc state node true)))
+
+(defn response-error
+  "Returns a function that will return an error response code and add
+  the provide node (a keyword) to the state."
+  [code request response state node]
+  #(return-code code request response (assoc state node false)))
+
+(defn key-to-upstring
+  "Returns a String containing the uppercase name of the provided
+  key."
+  [key]
+  (.toUpperCase (name key)))
+
+(defn list-keys-to-upstring
+  "Returns a comma separated list of upper-case Strings, each one the
+  name of one of the provided keys."
+  [keys]
+  (apply str (interpose ", " (for [key keys] (key-to-upstring key)))))
+
+(defn header-value
+  "Returns the value for the specified request header."
+  [header headers]
+  (first (some (fn [[header-in value]]
+                 (if (= header header-in)
+                   value))
+               headers)))
+
+;;(response-200 request response state :b11)
+
+(defn b9a
+  [resource request response state]
+  (let [valid (apply-callback request response :validate-content-checksum)]
+    (cond
+
+      valid
+      #(b9b resource request response (assoc state :b9a true))
+
+      (nil? valid)
+      (= (header-value "content-md5" (:headers request))
+         (DigestUtils/md5Hex (:body request)))
+
+      :else
+      (response-error 400 request
+                      (assoc :body response
+                             "Content-MD5 header does not match request body")
+                      state :b9a))))
+
+(defn b9b
+  [resource request response state]
+  (decide #(apply-callback request resource :malformed-request?)
+          true
+          (response-error 400 request response state :b9b)
+          (response-200 request response state :b9b)))
+
+(defn b9
+  [resource request response state]
+  (decide #(some (fn [[head]]
+                   (= "content-md5" head))
+                 (:headers request))
+          #(b9a resource request response (assoc state :b9 true))
+          #(b9b resource request response (assoc state :b9 false))))
+
+(defn b10
+  [resource request response state]
+  (decide #(some (fn [method-in]
+                   (= (:request-method request) method-in))
+                 (apply-callback request resource :allowed-methods))
+          true
+          #(b9 resource request response (assoc state :b10 true))
+          (response-error
+           405 request
+           (assoc-in response [:headers "Allow"]
+                     (list-keys-to-upstring
+                      (apply-callback request resource :allowed-methods)))
+           state :b10)))
+
+(defn b11
+  [resource request response state]
+  (decide #(apply-callback request resource :resource-available?)
+          true
+          #(b10 resource request response (assoc state :b11 true))
+          (response-error 414 request response state :b11)))
+
 (defn b12
   [resource request response state]
   (decide #(some (fn [method-in]
                    (= (:request-method request) method-in))
-                 (apply-callback resource :known-methods))
+                 (apply-callback request resource :known-methods))
           true
-          (return-code 200 request response (assoc state :b12 true))
-          (return-code 501 request response (assoc state :b12 false))))
+          #(b11 resource request response (assoc state :b12 true))
+          (response-error 501 request response state :b12)))
 
 (defn b13
   "Is the resource available?"
   [resource request response state]
-  (decide #(apply-callback resource :service-available?)
+  (decide #(apply-callback request resource :service-available?)
           true
           #(b12 resource request response (assoc state :b13 true))
-          (return-code 503 request response (assoc state :b13 false))))
+          #(response-error 503 request response state :b13)))
 
 (defn start
   "This function is the first stage in our processing tree. It will

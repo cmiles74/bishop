@@ -4,6 +4,7 @@
 (ns com.tnrglobal.bishop.sample
   (:use [ring.adapter.jetty]
         [ring.middleware.reload]
+        [ring.middleware.params]
         [ring.middleware.stacktrace])
   (:require [com.tnrglobal.bishop.core :as bishop])
   (:import [java.util Date]))
@@ -15,7 +16,8 @@
                   (str "<html><body><p>Hello "
                        (:name (:path-info request))
                        "! at "(Date.)
-                       "</p></body></html>\n\n"))
+                       "</p></body></html>\n\n"
+                       request "\n"))
     "text/xml"  (fn [request]
                   (str "<message><text>Hello "
                        (:name (:path-info request))
@@ -58,4 +60,5 @@
   'wrap-stacktrace' middleware for prettier errors."
   []
   (-> (bishop/handler routes)
+      (wrap-params)
       (wrap-stacktrace)))

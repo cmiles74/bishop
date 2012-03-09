@@ -7,10 +7,14 @@
   "Returns a map of all of the supported handlers and default
   implenentations."
   []
-  {:resource-exists? true
-   :service-available? true
-   :known-methods [:get :head :post :put :delete :trace :connect :options]
+  {:resource-exists? (fn [request] true)
+   :service-available? (fn [request] true)
+   :known-methods  (fn [request]
+                     [:get :head :post :put :delete :trace :connect :options])
+   :resource-available? (fn [request] true)
+   :allowed-methods (fn [request] [:get :head])
+   :malformed-request? (fn [request] false)
+   :validate-content-checksum (fn [request] nil)
 
    ;; default error handler
-   :error (fn [code request response state]
-            (str "An error occurred while processing your request"))})
+   :error (fn [code request response state])})
