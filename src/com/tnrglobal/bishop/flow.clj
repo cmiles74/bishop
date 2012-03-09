@@ -133,7 +133,7 @@
           #(b9 resource request response (assoc state :b10 true))
           (response-error
            405 request
-           (assoc-in response [:headers "Allow"]
+           (assoc-in response [:headers "allow"]
                      (list-keys-to-upstring
                       (apply-callback request resource :allowed-methods)))
            state :b10)))

@@ -28,75 +28,78 @@
 
   ;; Available?
 
-  (testing b13
+  (testing "B13 Invalid"
     (let [res (resource {"text/plain" "testing..."}
                         {:service-available? (fn [request] false)})
           req test-request]
       (is (= 503 (:status (run req res))) "Service unavailable")))
 
-  (testing b13
+  (testing "B13 Valid"
     (let [res (resource {"text/plain" "testing..."})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; Known method?
 
-  (testing b12
+  (testing "B12 Invalid"
     (let [res (resource {"text-plain" "testing"})
           req (assoc test-request :request-method :super-get)]
       (is (= 501 (:status (run req res))) "Not implemented")))
 
-  (testing b12
+  (testing "B12 Valid"
     (let [res (resource {"text-plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; URI too long?
 
-  (testing b11
+  (testing "B11 Invalid"
     (let [res (resource {"text-plain" "testing"}
                         {:uri-too-long? (fn [request] true)})
           req test-request]
       (is (= 414 (:status (run req res))) "Request URI too long")))
 
-  (testing b11
+  (testing "B11 Valid"
     (let [res (resource {"text-plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; Is method allowed on this resource?
 
-  (testing b10
+  (testing "B10 Invalid"
     (let [res (resource {"text-plain" "testing"}
                         {:allowed-methods (fn [request] [:post])})
           req test-request]
-      (is (= 405 (:status (run req res))) "Method not allowed")))
+      (let [res-out (run req res)]
+        (is (and (= 405 (:status res-out))
+                 (some (fn [[head val]]
+                         (= "allow" head)) (:headers res-out))) "Method not allowed"))))
 
-  (testing b10
+  (testing "B10 Valid"
     (let [res (resource {"text-plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; Contains "Content-MD5" header?
 
-  (testing b9
+  (testing "B9 No Header"
     (let [res (resource {"text-plain" "testing"})
-          req (merge-with concat
-                          test-request
-                          {:headers ["content-md5" "e4e68fb7bd0e697a0ae8f1bb342846b3"]
-                           :body (StringBufferInputStream. "Test message.")})]
-      (is (= 400 (:status (run req res))) "Content-MD5 header does not match request body")))
+          req test-request]
+      (is (= 200 (:status (run req res))))))
 
-  (testing b9
+  (testing "B9 Valid"
     (let [res (resource {"text-plain" "testing"})
           req (merge test-request
                      {:headers (conj (:headers test-request)
                                      ["content-md5" "e4e68fb7bd0e697a0ae8f1bb342846d7"])
                       :body (StringBufferInputStream. "Test message.")})]
-      (is (=  (:status (run req res))))))
+      (is (= 400 (:status (run req res))))))
 
-  (testing b9
+  (testing "B9 Invalid"
     (let [res (resource {"text-plain" "testing"})
-          req test-request]
-      (is (= 200 (:status (run req res))))))
+          req (merge-with concat
+                          test-request
+                          {:headers ["content-md5" "e4e68fb7bd0e697a0ae8f1bb342846b3"]
+                           :body (StringBufferInputStream. "Test message.")})]
+      (is (= 200 (:status (run req res))) "Content-MD5 header does not match request body")))
   )
