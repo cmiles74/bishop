@@ -11,7 +11,7 @@
    :service-available? (fn [request] true)
    :known-methods  (fn [request]
                      [:get :head :post :put :delete :trace :connect :options])
-   :resource-available? (fn [request] true)
+   :uri-too-long? (fn [request] false)
    :allowed-methods (fn [request] [:get :head])
    :malformed-request? (fn [request] false)
    :validate-content-checksum (fn [request] nil)

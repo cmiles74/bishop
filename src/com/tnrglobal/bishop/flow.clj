@@ -3,7 +3,9 @@
 ;; tree.
 ;;
 (ns com.tnrglobal.bishop.flow
-  (:import [org.apache.commons.codec.digest DigestUtils]))
+  (:use [clojure.java.io])
+  (:import [org.apache.commons.codec.digest DigestUtils]
+           [java.io ByteArrayOutputStream]))
 
 (defn decide
   "Calls the provided test function (test-fn). If the function's
@@ -86,15 +88,26 @@
 
 (defn b9a
   [resource request response state]
-  (let [valid (apply-callback request response :validate-content-checksum)]
+  (let [valid (apply-callback request resource :validate-content-checksum)]
+
     (cond
 
       valid
       #(b9b resource request response (assoc state :b9a true))
 
       (nil? valid)
-      (= (header-value "content-md5" (:headers request))
-         (DigestUtils/md5Hex (:body request)))
+      (if (= (header-value "content-md5" (:headers request))
+             (DigestUtils/md5Hex (with-open [reader-this (reader (:body request))
+                                             buffer (ByteArrayOutputStream.)]
+                                   (copy reader-this buffer)
+                                   (.toByteArray buffer))))
+
+        #(b9b resource request response (assoc state :b9a true))
+
+        (response-error 400 request
+                        (assoc response :body
+                               "Content-MD5 header does not match request body")
+                        state :b9a))
 
       :else
       (response-error 400 request
@@ -107,6 +120,7 @@
   (decide #(some (fn [[head]]
                    (= "content-md5" head))
                  (:headers request))
+          true
           #(b9a resource request response (assoc state :b9 true))
           #(b9b resource request response (assoc state :b9 false))))
 
@@ -126,10 +140,10 @@
 
 (defn b11
   [resource request response state]
-  (decide #(apply-callback request resource :resource-available?)
+  (decide #(apply-callback request resource :uri-too-long?)
           true
-          #(b10 resource request response (assoc state :b11 true))
-          (response-error 414 request response state :b11)))
+          (response-error 414 request response state :b11)
+          #(b10 resource request response (assoc state :b11 false))))
 
 (defn b12
   [resource request response state]
