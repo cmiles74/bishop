@@ -39,7 +39,7 @@
   [code request response state]
   [code request (assoc response :status code) state])
 
-;; states
+;; utility methods
 
 (defn response-200
   "Returns a function that will return a 200 response code and add the
@@ -73,7 +73,16 @@
                    value))
                headers)))
 
+;; states
+
 ;;(response-200 request response state :b11)
+
+(defn b9b
+  [resource request response state]
+  (decide #(apply-callback request resource :malformed-request?)
+          true
+          (response-error 400 request response state :b9b)
+          (response-200 request response state :b9b)))
 
 (defn b9a
   [resource request response state]
@@ -92,13 +101,6 @@
                       (assoc :body response
                              "Content-MD5 header does not match request body")
                       state :b9a))))
-
-(defn b9b
-  [resource request response state]
-  (decide #(apply-callback request resource :malformed-request?)
-          true
-          (response-error 400 request response state :b9b)
-          (response-200 request response state :b9b)))
 
 (defn b9
   [resource request response state]
