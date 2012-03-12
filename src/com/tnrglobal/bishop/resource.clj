@@ -15,6 +15,7 @@
    :allowed-methods (fn [request] [:get :head])
    :malformed-request? (fn [request] false)
    :validate-content-checksum (fn [request] nil)
+   :is-authorized? (fn [reques] true)
 
    ;; default error handler
    :error (fn [code request response state])})

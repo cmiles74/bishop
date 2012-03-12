@@ -79,12 +79,29 @@
 
 ;;(response-200 request response state :b11)
 
+(defn b8
+  [resource request response state]
+  (let [result (#(apply-callback request resource :is-authorized?))]
+    (cond
+
+      (= true result)
+      (response-200 request response state :b8)
+
+      (instance? String result)
+      (response-200 request (assoc-in response
+                                      [:headers "www-authenticate"]
+                                      result)
+                    state b8)
+
+      :else
+      (response-error 401 request response state :b8))))
+
 (defn b9b
   [resource request response state]
   (decide #(apply-callback request resource :malformed-request?)
           true
           (response-error 400 request response state :b9b)
-          (response-200 request response state :b9b)))
+          #(b8 resource request response (assoc state :b9b false))))
 
 (defn b9a
   [resource request response state]

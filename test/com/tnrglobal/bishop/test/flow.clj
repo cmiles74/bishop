@@ -102,4 +102,30 @@
                           {:headers ["content-md5" "e4e68fb7bd0e697a0ae8f1bb342846b3"]
                            :body (StringBufferInputStream. "Test message.")})]
       (is (= 200 (:status (run req res))) "Content-MD5 header does not match request body")))
+
+  ;; is authorized?
+
+  (testing "B8 Valid"
+    (let [res (resource {"text-plain" "testing"})
+          req test-request]
+      (is (= 200 (:status (run req res))))))
+
+  (testing "B8 Valid"
+    (let [res (resource {"text-plain" "testing"}
+                        {:is-authorized? (fn [request] false)})
+          req test-request]
+      (is (= 401 (:status (run req res))))))
+
+    (testing "B8 Invalid"
+      (let [res (resource {"text-plain" "testing"}
+                          {:is-authorized? (fn [request] "Basic")})
+            req test-request
+            response (run req res)]
+        (println response)
+        (is (and (= 200 (:status response))
+                 (some (fn [[head value]]
+                         (println head " " value)
+                         (and (= "www-authenticate" head)
+                              (= "Basic" value)))
+                       (:headers response))))))
   )
