@@ -79,12 +79,19 @@
 
 ;;(response-200 request response state :b11)
 
+(defn b6
+  [resource request response state]
+  (decide #(apply-callback request resource :valid-content-headers?)
+          true
+          (response-200 request response state :b6)
+          (response-error 501 request response state :b6)))
+
 (defn b7
   [resource request response state]
   (decide #(apply-callback request resource :forbidden?)
           true
           (response-error 403 request response state :b7)
-          (response-200 request response state :b7)))
+          #(b6 resource request response (assoc state :b6 true))))
 
 (defn b8
   [resource request response state]

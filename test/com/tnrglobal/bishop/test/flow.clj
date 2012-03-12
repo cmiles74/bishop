@@ -42,32 +42,32 @@
   ;; Known method?
 
   (testing "B12 Invalid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req (assoc test-request :request-method :super-get)]
       (is (= 501 (:status (run req res))) "Not implemented")))
 
   (testing "B12 Valid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; URI too long?
 
   (testing "B11 Invalid"
-    (let [res (resource {"text-plain" "testing"}
+    (let [res (resource {"text/plain" "testing"}
                         {:uri-too-long? (fn [request] true)})
           req test-request]
       (is (= 414 (:status (run req res))) "Request URI too long")))
 
   (testing "B11 Valid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; Is method allowed on this resource?
 
   (testing "B10 Invalid"
-    (let [res (resource {"text-plain" "testing"}
+    (let [res (resource {"text/plain" "testing"}
                         {:allowed-methods (fn [request] [:post])})
           req test-request]
       (let [res-out (run req res)]
@@ -76,19 +76,19 @@
                          (= "allow" head)) (:headers res-out))) "Method not allowed"))))
 
   (testing "B10 Valid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   ;; Contains "Content-MD5" header?
 
   (testing "B9 No Header"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   (testing "B9 Valid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req (merge test-request
                      {:headers (conj (:headers test-request)
                                      ["content-md5" "e4e68fb7bd0e697a0ae8f1bb342846d7"])
@@ -96,7 +96,7 @@
       (is (= 400 (:status (run req res))))))
 
   (testing "B9 Invalid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req (merge-with concat
                           test-request
                           {:headers ["content-md5" "e4e68fb7bd0e697a0ae8f1bb342846b3"]
@@ -106,18 +106,18 @@
   ;; is authorized?
 
   (testing "B8 Valid"
-    (let [res (resource {"text-plain" "testing"})
+    (let [res (resource {"text/plain" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
 
   (testing "B8 Valid"
-    (let [res (resource {"text-plain" "testing"}
+    (let [res (resource {"text/plain" "testing"}
                         {:is-authorized? (fn [request] false)})
           req test-request]
       (is (= 401 (:status (run req res))) "Unauthorized")))
 
     (testing "B8 Invalid"
-      (let [res (resource {"text-plain" "testing"}
+      (let [res (resource {"text/plain" "testing"}
                           {:is-authorized? (fn [request] "Basic")})
             req test-request
             response (run req res)]
@@ -130,13 +130,26 @@
     ;; forbidden?
 
     (testing "B7 Valid"
-      (let [res (resource {"text-plain" "testing"})
+      (let [res (resource {"text/plain" "testing"})
             req test-request]
         (is (= 200 (:status (run req res))))))
 
     (testing "B7 Invalid"
-      (let [res (resource {"text-plain" "testing"}
+      (let [res (resource {"text/plain" "testing"}
                           {:forbidden? (fn [request] true)})
             req test-request]
         (is (= 403 (:status (run req res))) "Forbidden")))
+
+    ;; valid content headers?
+
+    (testing "B6 Valid"
+      (let [res (resource {"text/plain" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "B6 Invalid"
+      (let [res (resource {"text/plain" "testing"}
+                          {:valid-content-headers? (fn [request] false)})
+            req test-request]
+        (is (= 501 (:status (run req res))) "Not implemented")))
   )

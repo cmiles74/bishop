@@ -17,6 +17,7 @@
    :validate-content-checksum (fn [request] nil)
    :is-authorized? (fn [request] true)
    :forbidden? (fn [request] false)
+   :valid-content-headers? (fn [request] true)
 
    ;; default error handler
    :error (fn [code request response state])})
