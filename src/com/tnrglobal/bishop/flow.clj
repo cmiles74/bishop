@@ -79,19 +79,27 @@
 
 ;;(response-200 request response state :b11)
 
+(defn b7
+  [resource request response state]
+  (decide #(apply-callback request resource :forbidden?)
+          true
+          (response-error 403 request response state :b7)
+          (response-200 request response state :b7)))
+
 (defn b8
   [resource request response state]
   (let [result (#(apply-callback request resource :is-authorized?))]
     (cond
 
       (= true result)
-      (response-200 request response state :b8)
+      #(b7 resource request response (assoc state :b8 true))
 
       (instance? String result)
-      (response-200 request (assoc-in response
-                                      [:headers "www-authenticate"]
-                                      result)
-                    state b8)
+      #(b7 resource request
+           (assoc-in response
+                     [:headers "www-authenticate"]
+                     result)
+           (assoc state :b8 result))
 
       :else
       (response-error 401 request response state :b8))))

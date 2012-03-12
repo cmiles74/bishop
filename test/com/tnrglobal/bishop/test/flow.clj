@@ -114,18 +114,29 @@
     (let [res (resource {"text-plain" "testing"}
                         {:is-authorized? (fn [request] false)})
           req test-request]
-      (is (= 401 (:status (run req res))))))
+      (is (= 401 (:status (run req res))) "Unauthorized")))
 
     (testing "B8 Invalid"
       (let [res (resource {"text-plain" "testing"}
                           {:is-authorized? (fn [request] "Basic")})
             req test-request
             response (run req res)]
-        (println response)
         (is (and (= 200 (:status response))
                  (some (fn [[head value]]
-                         (println head " " value)
                          (and (= "www-authenticate" head)
                               (= "Basic" value)))
-                       (:headers response))))))
+                       (:headers response))) "Authenticate")))
+
+    ;; forbidden?
+
+    (testing "B7 Valid"
+      (let [res (resource {"text-plain" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "B7 Invalid"
+      (let [res (resource {"text-plain" "testing"}
+                          {:forbidden? (fn [request] true)})
+            req test-request]
+        (is (= 403 (:status (run req res))) "Forbidden")))
   )
