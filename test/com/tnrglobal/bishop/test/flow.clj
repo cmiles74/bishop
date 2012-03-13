@@ -152,4 +152,29 @@
                           {:valid-content-headers? (fn [request] false)})
             req test-request]
         (is (= 501 (:status (run req res))) "Not implemented")))
+
+    ;; known content type?
+
+    (testing "B5 Valid"
+      (let [res (resource {"text/plain" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "B5 Invalid"
+      (let [res (resource {"text/plain" "testing"}
+                          {:known-content-type? (fn [request] false)})
+            req test-request]
+        (is (= 415 (:status (run req res))) "Unsupported media type")))
+
+    ;; valid entity length?
+    (testing "B4 Valid"
+      (let [res (resource {"text/plain" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "B4 Invalid"
+      (let [res (resource {"text/plain" "testing"}
+                          {:valid-entity-length? (fn [request] false)})
+            req test-request]
+        (is (= 413 (:status (run req res))) "Request entity too large")))
   )

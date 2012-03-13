@@ -79,11 +79,25 @@
 
 ;;(response-200 request response state :b11)
 
+(defn b4
+  [resource request response state]
+  (decide #(apply-callback request resource :valid-entity-length?)
+          true
+          (response-200 request response state :b4)
+          (response-error 413 request response state :b4)))
+
+(defn b5
+  [resource request response state]
+  (decide #(apply-callback request resource :known-content-type?)
+          true
+          #(b4 resource request response (assoc state :b5 true))
+          (response-error 415 request response state :b5)))
+
 (defn b6
   [resource request response state]
   (decide #(apply-callback request resource :valid-content-headers?)
           true
-          (response-200 request response state :b6)
+          #(b5 resource request response (assoc state :b6 true))
           (response-error 501 request response state :b6)))
 
 (defn b7
