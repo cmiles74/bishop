@@ -167,6 +167,7 @@
         (is (= 415 (:status (run req res))) "Unsupported media type")))
 
     ;; valid entity length?
+
     (testing "B4 Valid"
       (let [res (resource {"text/plain" "testing"})
             req test-request]
@@ -177,4 +178,20 @@
                           {:valid-entity-length? (fn [request] false)})
             req test-request]
         (is (= 413 (:status (run req res))) "Request entity too large")))
+
+    ;; options?
+
+    (testing "B3 Valid"
+      (let [res (resource {"text/plain" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "B3 Options"
+      (let [res (resource {"text/plain" "testing"}
+                          {:allowed-methods (fn [request] [:get :head :options])
+                           :options (fn [request] {"allow" "GET, HEAD, OPTIONS"})})
+            req (assoc test-request :request-method :options)]
+        (is (some (fn [[header value]]
+                    (= "allow" header))
+                  (:headers (run req res))) "Request entity too large")))
   )

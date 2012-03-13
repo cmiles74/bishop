@@ -79,11 +79,21 @@
 
 ;;(response-200 request response state :b11)
 
+(defn b3
+  [resource request response state]
+  (if (= :options (:request-method request))
+    (response-200 request
+                  (assoc response :headers
+                         (concat (:headers response)
+                                 (#(apply-callback request resource :options))))
+                  state :b3)
+    (response-200 request response state :b3)))
+
 (defn b4
   [resource request response state]
   (decide #(apply-callback request resource :valid-entity-length?)
           true
-          (response-200 request response state :b4)
+          #(b3 resource request response (assoc state :b4 true))
           (response-error 413 request response state :b4)))
 
 (defn b5

@@ -20,6 +20,7 @@
    :valid-content-headers? (fn [request] true)
    :known-content-type? (fn [request] true)
    :valid-entity-length? (fn [reqeust] true)
+   :options (fn [request] {})
 
    ;; default error handler
    :error (fn [code request response state])})
