@@ -22,6 +22,7 @@
    :valid-entity-length? (fn [request] true)
    :options (fn [request] {})
    :languages-provided (fn [reqeust] [])
+   :charsets-provided (fn [request] [])
 
    ;; default error handler
    :error (fn [code request response state])})

@@ -164,13 +164,31 @@
 
 ;;(response-200 request response state :b11)
 
+(defn f6
+  [resource request response state]
+  (response-200 request response state :f6))
+
+(defn e6
+  [resource request response state]
+  (response-200 request response state :f6))
+
 (defn e5
   [resource request response state]
-  (response-200 request response state :d5))
-
-(defn d6
-  [resource request response state]
-  (response-200 request response state :d5))
+  (if (header-value "accept-charset" (:headers request))
+    (let [acceptable (acceptable-type
+                      (let [charsets (apply-callback request resource
+                                                     :charsets-provided)]
+                        (if (> 1 (count charsets))
+                          (conj charsets "*")
+                          charsets))
+                      (header-value "accept-charset" (:headers request)))]
+      (if acceptable
+        #(e6 resource
+             (assoc request :acceptable-charset acceptable)
+             response
+             (assoc state :e5 true))
+        (response-error 406 request response state :e5)))
+    #(f6 resource request response (assoc state :e5 false))))
 
 (defn d5
   [resource request response state]
@@ -178,7 +196,7 @@
     (if (and (or (= "*" acceptable)
                  (some #(= acceptable %)
                        (apply-callback request resource :languages-provided))))
-      #(d6 resource request response (assoc state :d5 true))
+      #(e5 resource request response (assoc state :d5 true))
       (response-error 406 request response state :d5))))
 
 (defn d4
