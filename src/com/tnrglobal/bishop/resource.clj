@@ -19,8 +19,9 @@
    :forbidden? (fn [request] false)
    :valid-content-headers? (fn [request] true)
    :known-content-type? (fn [request] true)
-   :valid-entity-length? (fn [reqeust] true)
+   :valid-entity-length? (fn [request] true)
    :options (fn [request] {})
+   :languages-provided (fn [reqeust] [])
 
    ;; default error handler
    :error (fn [code request response state])})

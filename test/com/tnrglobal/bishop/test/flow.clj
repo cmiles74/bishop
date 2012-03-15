@@ -210,4 +210,27 @@
             req (assoc-in test-request [:headers "accept"]
                        "text/html,application/xhtml+xml,application/xml;q=0.9")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
+
+    ;; acceptable language?
+
+    (testing "D4 Unspecified"
+      (let [res (resource {"text/html" (fn [r] (:acceptable-language r))})
+            req test-request]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= nil (:body response)))))))
+
+    (testing "D4 Valid"
+      (let [res (resource {"text/html" (fn [r] (:acceptable-language r))})
+            req (assoc-in test-request [:headers "accept-language"]
+                          "en,*;q=0.8")]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= "*" (:body response)))))))
+
+    (testing "D4 Invalid"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc-in test-request [:headers "accept-language"]
+                          "da,en;q=0.8")]
+        (is (= 406 (:status (run req res))) "Not Acceptable")))
   )

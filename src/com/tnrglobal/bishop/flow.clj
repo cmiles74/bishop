@@ -128,16 +128,18 @@
   map, i.e. 'text/plain'."
   [type-map]
   (if type-map
-    (apply str (interpose "/" (vals type-map)))))
+    (if (:minor type-map)
+      (apply str (interpose "/" (vals type-map)))
+      (first (vals type-map)))))
 
-(defn acceptable-content-type
-  "Returns the resource's matching handler for the provided accept
-  request header."
-  [resource accept-header]
+(defn acceptable-type
+  "Compares the provided accept-header against a sequence of
+  content-types and returns the content type that matches or nil if
+  there are not valid matches."
+  [content-types accept-header]
 
   ;; parse out the content types being offered and the accept header
-  (let [content-types (map parse-content-type (keys (:response resource)))
-        accept-types (parse-accept-header accept-header)]
+  (let [accept-types (parse-accept-header accept-header)]
 
     ;; return a string representation, not a map
     (content-type-string
@@ -148,23 +150,51 @@
                      (if (content-type-matches?
                           content-type accept-type)
                        content-type))
-                   content-types))
+                   (map parse-content-type content-types)))
            accept-types))))
+
+(defn acceptable-content-type
+  "Returns the resource's matching content-type for the provided
+  accept request header."
+  [resource accept-header]
+  (acceptable-type (keys (:response resource))
+                           accept-header))
 
 ;; states
 
 ;;(response-200 request response state :b11)
 
+(defn d5
+  [resource request response state]
+  (response-200 request response state :d5))
+
 (defn d4
   [resource request response state]
-  (response-200 request response state :d4))
+  (if (header-value "accept-language" (:headers request))
+    (let [acceptable (acceptable-type
+                      (let [languages (apply-callback request resource
+                                                      :languages-provided)]
+                        (if (> 1 (count languages))
+                          (conj languages "*")
+                          languages))
+                      (header-value "accept-language" (:headers request)))]
+      (if acceptable
+        #(d5 resource
+             (assoc request :acceptable-language acceptable)
+             response
+             (assoc state :d4 true))
+        (response-error 406 request response state :d4)))
+    #(d5 resource request response (assoc state :d4 false))))
 
 (defn c4
   [resource request response state]
   (let [acceptable (acceptable-content-type
                     resource (header-value "accept" (:headers request)))]
     (if acceptable
-      (response-200 (assoc request :acceptable-type acceptable) response state :c4)
+      #(d4 resource
+           (assoc request :acceptable-type acceptable)
+           response
+           (assoc state :c4 true))
       (response-error 406 request response state :c4))))
 
 (defn c3
