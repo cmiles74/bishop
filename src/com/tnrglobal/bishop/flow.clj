@@ -86,7 +86,7 @@
   (sort #(compare (:q %2) (:q %1))
 
         ;; break up the header by acceptable type
-        (let [acceptable-types (string/split accept-header #",")]
+        (let [acceptable-types (string/split (.toLowerCase accept-header) #",")]
 
           ;; break each type into components
           (for [acceptable-type acceptable-types]
@@ -110,7 +110,8 @@
 (defn parse-content-type
   "Parse's a handler's methods content-type into a map of data."
   [content-type]
-  (let [major-minor-seq (map #(.trim %) (string/split content-type #"/"))]
+  (let [major-minor-seq (map #(.trim %)
+                             (string/split (.toLowerCase content-type) #"/"))]
     {:major (first major-minor-seq)
      :minor (second major-minor-seq)}))
 
@@ -118,6 +119,7 @@
   "Returns true if the provided parsed accept-type matches the
   provided parsed response-type."
   [content-type accept-type]
+  (println content-type " ? " accept-type)
   (and (or (= (:major content-type) (:major accept-type))
            (= "*" (:major accept-type)))
        (or (= (:minor content-type) (:minor accept-type))
@@ -129,7 +131,7 @@
   [type-map]
   (if type-map
     (if (:minor type-map)
-      (apply str (interpose "/" (vals type-map)))
+      (.toLowerCase (apply str (interpose "/" (vals type-map))))
       (first (vals type-map)))))
 
 (defn acceptable-type
@@ -194,7 +196,7 @@
   [resource request response state]
   (let [acceptable (:acceptable-charset request)]
     (if (and (or (= "*" acceptable)
-                 (some #(= acceptable %)
+                 (some #(= acceptable (.toLowerCase %))
                        (apply-callback request resource :charsets-provided))))
       #(f6 resource request response (assoc state :e6 true))
       (response-error 406 request response state :e6))))
@@ -221,7 +223,7 @@
   [resource request response state]
   (let [acceptable (:acceptable-language request)]
     (if (and (or (= "*" acceptable)
-                 (some #(= acceptable %)
+                 (some #(= acceptable (.toLowerCase %))
                        (apply-callback request resource :languages-provided))))
       #(e5 resource request response (assoc state :d5 true))
       (response-error 406 request response state :d5))))

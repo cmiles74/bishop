@@ -288,9 +288,9 @@
 
     (testing "E6 Available"
       (let [res (resource {"text/html" (fn [r] (:acceptable-charset r))}
-                          {:charsets-provided (fn [r] ["utf8"])})
+                          {:charsets-provided (fn [r] ["UTF8"])})
             req (assoc-in test-request [:headers "accept-charset"]
-                          "utf8,ISO-8859-1;q=0.8")]
+                          "utf8,iso-8859-1;q=0.8")]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= "utf8" (:body response)))))))
@@ -298,7 +298,7 @@
     (testing "E6 Invalid"
       (let [res (resource {"text/html" "testing"})
             req (assoc-in test-request [:headers "accept-charset"]
-                          "utf8,ISO-8859-1;q=0.8")]
+                          "utf8,iso-8859-1;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
 
     ;; acceptable encoding?
