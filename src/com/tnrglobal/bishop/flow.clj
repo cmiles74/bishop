@@ -119,7 +119,6 @@
   "Returns true if the provided parsed accept-type matches the
   provided parsed response-type."
   [content-type accept-type]
-  (println content-type " ? " accept-type)
   (and (or (= (:major content-type) (:major accept-type))
            (= "*" (:major accept-type)))
        (or (= (:minor content-type) (:minor accept-type))
@@ -172,7 +171,12 @@
 
 (defn f7
   [resource request response state]
-  (response-200 request response state :f7))
+  (let [acceptable (:acceptable-encoding request)]
+    (if (and (or (= "*" acceptable)
+                 (some #(= acceptable (.toLowerCase %))
+                       (keys (apply-callback request resource :encodings-provided)))))
+      #(g7 resource request response (assoc state :f7 true))
+      (response-error 406 request response state :f7))))
 
 (defn f6
   [resource request response state]

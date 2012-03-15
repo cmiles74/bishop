@@ -323,4 +323,25 @@
             req (assoc-in test-request [:headers "accept-encoding"]
                           "gzip,deflate;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
+
+    ;; acceptable encoding available?
+
+    (testing "F7 Unspecified"
+      (let [res (resource {"text/html" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "F7 Available"
+      (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
+            req (assoc-in test-request [:headers "accept-encoding"]
+                          "gzip,*;q=0.8")]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= "identity" (:body response)))))))
+
+    (testing "F7 Invalid"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc-in test-request [:headers "accept-encoding"]
+                          "utf8,deflate;q=0.8")]
+        (is (= 406 (:status (run req res))) "Not Acceptable")))
   )
