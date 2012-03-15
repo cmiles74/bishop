@@ -233,4 +233,26 @@
             req (assoc-in test-request [:headers "accept-language"]
                           "da,en;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
+
+    ;; acceptable language available?
+
+    (testing "D5 Unspecified"
+      (let [res (resource {"text/html" "testing"})
+            req test-request]
+        (is (= 200 (:status (run req res))))))
+
+    (testing "D5 Available"
+      (let [res (resource {"text/html" (fn [r] (:acceptable-language r))}
+                          {:languages-provided (fn [r] ["en"])})
+            req (assoc-in test-request [:headers "accept-language"]
+                          "da,en;q=0.8")]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= "en" (:body response)))))))
+
+    (testing "D5 Invalid"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc-in test-request [:headers "accept-language"]
+                          "da,en;q=0.8")]
+        (is (= 406 (:status (run req res))) "Not Acceptable")))
   )

@@ -164,9 +164,22 @@
 
 ;;(response-200 request response state :b11)
 
-(defn d5
+(defn e5
   [resource request response state]
   (response-200 request response state :d5))
+
+(defn d6
+  [resource request response state]
+  (response-200 request response state :d5))
+
+(defn d5
+  [resource request response state]
+  (let [acceptable (:acceptable-language request)]
+    (if (and (or (= "*" acceptable)
+                 (some #(= acceptable %)
+                       (apply-callback request resource :languages-provided))))
+      #(d6 resource request response (assoc state :d5 true))
+      (response-error 406 request response state :d5))))
 
 (defn d4
   [resource request response state]
@@ -184,7 +197,7 @@
              response
              (assoc state :d4 true))
         (response-error 406 request response state :d4)))
-    #(d5 resource request response (assoc state :d4 false))))
+    #(e5 resource request response (assoc state :d4 false))))
 
 (defn c4
   [resource request response state]
