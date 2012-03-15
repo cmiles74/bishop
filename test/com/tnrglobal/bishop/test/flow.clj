@@ -300,4 +300,27 @@
             req (assoc-in test-request [:headers "accept-charset"]
                           "utf8,ISO-8859-1;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
+
+    ;; acceptable encoding?
+
+    (testing "F6 Unspecified"
+      (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
+            req test-request]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= nil (:body response)))))))
+
+    (testing "F6 Valid"
+      (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
+            req (assoc-in test-request [:headers "accept-encoding"]
+                          "gzip,*;q=0.8")]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= "identity" (:body response)))))))
+
+    (testing "F6 Invalid"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc-in test-request [:headers "accept-encoding"]
+                          "gzip,deflate;q=0.8")]
+        (is (= 406 (:status (run req res))) "Not Acceptable")))
   )

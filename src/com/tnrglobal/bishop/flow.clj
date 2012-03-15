@@ -164,9 +164,31 @@
 
 ;;(response-200 request response state :b11)
 
+(defn g7
+  [resource request response state]
+  (response-200 request response state :g7))
+
+(defn f7
+  [resource request response state]
+  (response-200 request response state :f7))
+
 (defn f6
   [resource request response state]
-  (response-200 request response state :f6))
+  (if (header-value "accept-encoding" (:headers request))
+    (let [acceptable (acceptable-type
+                      (let [encodings (keys (apply-callback request resource
+                                                            :encodings-provided))]
+                        (if (> 1 (count encodings))
+                          (conj encodings "*")
+                          encodings))
+                      (header-value "accept-encoding" (:headers request)))]
+      (if acceptable
+        #(f7 resource
+             (assoc request :acceptable-encoding acceptable)
+             response
+             (assoc state :f6 true))
+        (response-error 406 request response state :f6)))
+    #(g7 resource request response (assoc state :f6 false))))
 
 (defn e6
   [resource request response state]
