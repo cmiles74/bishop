@@ -44,7 +44,7 @@
 
 ;; utility methods
 
-(defn response-200
+(defn response-ok
   "Returns a function that will return a 200 response code and add the
   provided node (a keyword) to the state."
   [request response state node]
@@ -163,11 +163,11 @@
 
 ;; states
 
-;;(response-200 request response state :b11)
+;;(response-ok request response state :b11)
 
 (defn g7
   [resource request response state]
-  (response-200 request response state :g7))
+  (response-ok request response state :g7))
 
 (defn f7
   [resource request response state]
@@ -270,7 +270,7 @@
 (defn b3
   [resource request response state]
   (if (= :options (:request-method request))
-    (response-200 request
+    (response-ok request
                   (assoc response :headers
                          (concat (:headers response)
                                  (#(apply-callback request resource :options))))
