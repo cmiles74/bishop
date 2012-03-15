@@ -5,7 +5,8 @@
 (ns com.tnrglobal.bishop.flow
   (:use [clojure.java.io])
   (:import [org.apache.commons.codec.digest DigestUtils]
-           [java.io ByteArrayOutputStream]))
+           [java.io ByteArrayOutputStream])
+  (:require [clojure.string :as string]))
 
 (defn decide
   "Calls the provided test function (test-fn). If the function's
@@ -70,14 +71,107 @@
 (defn header-value
   "Returns the value for the specified request header."
   [header headers]
-  (first (some (fn [[header-in value]]
-                 (if (= header header-in)
-                   value))
-               headers)))
+  (some (fn [[header-in value]]
+
+          (if (= header header-in)
+            value))
+        headers))
+
+(defn parse-accept-header
+  "Parses an request's 'accept' header into a vector of maps, each map
+  containing details about an acceptable content type."
+  [accept-header]
+
+  ;; sort the acceptable content types by their q value
+  (sort #(compare (:q %2) (:q %1))
+
+        ;; break up the header by acceptable type
+        (let [acceptable-types (string/split accept-header #",")]
+
+          ;; break each type into components
+          (for [acceptable-type acceptable-types]
+            (let [major-minor-seq (string/split acceptable-type #";")
+                  major-minor (first (string/split acceptable-type #";"))
+                  major (if major-minor (first (string/split major-minor #"/")))
+                  minor (if major-minor (second (string/split major-minor #"/")))
+                  parameters-all (second (string/split acceptable-type #";"))
+                  parameters (if parameters-all
+                               (apply hash-map
+                                      (string/split parameters-all #"=")))]
+              {:major major
+               :minor minor
+               :parameters parameters
+
+               ;; extract the q parameter, use 1.0 if not present
+               :q (if (and parameters (parameters "q"))
+                    (Double/valueOf (parameters "q"))
+                    1.0)})))))
+
+(defn parse-content-type
+  "Parse's a handler's methods content-type into a map of data."
+  [content-type]
+  (let [major-minor-seq (map #(.trim %) (string/split content-type #"/"))]
+    {:major (first major-minor-seq)
+     :minor (second major-minor-seq)}))
+
+(defn content-type-matches?
+  "Returns true if the provided parsed accept-type matches the
+  provided parsed response-type."
+  [content-type accept-type]
+  (and (or (= (:major content-type) (:major accept-type))
+           (= "*" (:major accept-type)))
+       (or (= (:minor content-type) (:minor accept-type))
+           (= "*" (:minor accept-type)))))
+
+(defn content-type-string
+  "Returns the a string representation of the provided content-type
+  map, i.e. 'text/plain'."
+  [type-map]
+  (if type-map
+    (apply str (interpose "/" (vals type-map)))))
+
+(defn acceptable-content-type
+  "Returns the resource's matching handler for the provided accept
+  request header."
+  [resource accept-header]
+
+  ;; parse out the content types being offered and the accept header
+  (let [content-types (map parse-content-type (keys (:response resource)))
+        accept-types (parse-accept-header accept-header)]
+
+    ;; return a string representation, not a map
+    (content-type-string
+
+     ;; return the first matching content type
+     (some (fn [accept-type]
+             (some (fn [content-type]
+                     (if (content-type-matches?
+                          content-type accept-type)
+                       content-type))
+                   content-types))
+           accept-types))))
 
 ;; states
 
 ;;(response-200 request response state :b11)
+
+(defn d4
+  [resource request response state]
+  (response-200 request response state :d4))
+
+(defn c4
+  [resource request response state]
+  (let [acceptable (acceptable-content-type
+                    resource (header-value "accept" (:headers request)))]
+    (if acceptable
+      (response-200 (assoc request :acceptable-type acceptable) response state :c4)
+      (response-error 406 request response state :c4))))
+
+(defn c3
+  [resource request response state]
+  (if (header-value "accept" (:headers request))
+    #(c4 resource request response (assoc state :c3 false))
+    #(d4 resource request response (assoc state :c3 true))))
 
 (defn b3
   [resource request response state]
@@ -87,7 +181,7 @@
                          (concat (:headers response)
                                  (#(apply-callback request resource :options))))
                   state :b3)
-    (response-200 request response state :b3)))
+    #(c3 resource request response (assoc state :b3 false))))
 
 (defn b4
   [resource request response state]
