@@ -170,7 +170,12 @@
 
 (defn e6
   [resource request response state]
-  (response-200 request response state :f6))
+  (let [acceptable (:acceptable-charset request)]
+    (if (and (or (= "*" acceptable)
+                 (some #(= acceptable %)
+                       (apply-callback request resource :charsets-provided))))
+      #(f6 resource request response (assoc state :e6 true))
+      (response-error 406 request response state :e6))))
 
 (defn e5
   [resource request response state]
