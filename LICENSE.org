@@ -1,0 +1,18 @@
+You may use this project under the terms of either the MIT License or
+the GNU General Public License (GPL) Version 2. You don't need to do
+anything special in order to choose one of these licenses nor do you
+need to notify anyone. You are free to use this project in a
+commercial project as long as the copyright header is left intact.
+
+* The MIT License
+
+  The [[http://github.com/tnr-global/bishop/blob/master/MIT-LICENSE.txt][MIT license]] is recommended for most projects. It is simple and
+  easy to understand, it places almost no restrictions on what you can
+  do with this project. More information about this license can be
+  found [[http://en.wikipedia.org/wiki/MIT_License][on its Wikipedia page]].
+
+* The GPL License
+
+  If the [[http://github.com/tnr-global/bishop/blob/master/GPL-LICENSE.txt][GPL license]] is a better fit, you are also free to use the
+  project under that license. More information about this license can
+  be found [[http://en.wikipedia.org/wiki/GNU_General_Public_License][on its Wikipedia page]].
