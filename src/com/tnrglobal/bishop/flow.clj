@@ -159,15 +159,45 @@
   accept request header."
   [resource accept-header]
   (acceptable-type (keys (:response resource))
-                           accept-header))
+                   accept-header))
+
+(defn variances
+  "Returns a sequence of headers that, if different, would result in a
+  different (varied) resource being served."
+  [request]
+  (filter #(not (nil? %))
+          [(if (:acceptable-encoding request) "accept-encoding")
+           (if (:acceptable-charset request) "accept-charset")
+           (if (:acceptable-language request) "accept-language")
+           (if (:acceptable-type request) "accept")]))
 
 ;; states
 
 ;;(response-ok request response state :b11)
 
-(defn g7
+(defn h7
   [resource request response state]
   (response-ok request response state :g7))
+
+(defn g8
+  [resource request response state]
+  (response-ok request response state :g7))
+
+(defn g7
+  [resource request response state]
+
+  ;; compute our variances now that the headers have been handled, add
+  ;; this to our response
+  (let [vary (into (apply-callback request resource :variances)
+                   (variances request))
+        response-varied (assoc response :headers
+                               (merge (:headers response)
+                                       {"vary" (apply str (interpose ", " vary))}))]
+
+    (decide #(apply-callback request resource :resource-exists?)
+            true
+            #(g8 resource request response-varied (assoc state :g7 true))
+            #(h7 resource request response-varied (assoc state :g7 false)))))
 
 (defn f7
   [resource request response state]

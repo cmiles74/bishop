@@ -342,6 +342,28 @@
     (testing "F7 Invalid"
       (let [res (resource {"text/html" "testing"})
             req (assoc-in test-request [:headers "accept-encoding"]
-                          "utf8,deflate;q=0.8")]
+                          "gzip,deflate;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
+
+    ;; vary header
+
+    (testing "G7 No Header"
+      (let [res (resource {"text/html" "testing"})
+            req test-request]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= "accept" ((:headers response) "vary")))))))
+
+    (testing "G7 Header"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"accept-encoding" "gzip,*;q=0.8"}
+                               {"accept-charset" "utf8,*;q=0.8"}
+                               {"accept-language" "en,*;q=0.8"}
+                               {"accept" "text/html,application/xhtml+xml;q=0.8"}))]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= "accept-encoding, accept-charset, accept-language, accept"
+                      ((:headers response) "vary")))))))
   )
