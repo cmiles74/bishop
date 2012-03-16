@@ -1,0 +1,88 @@
+Bishop is a [[http://wiki.basho.com/Webmachine.html][Webmachine]]-like framework for Clojure. The primary goal of
+this project is to make it much easier to construct a clean, [[http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol][HTTP 1.1]]
+compliant web-based API. With this ground-work laid, it will be much
+easier for the developer to construct [[http://en.wikipedia.org/wiki/REST][REST-ful]] or even [[http://en.wikipedia.org/wiki/HATEOAS][HATEOAS]]
+compliant services.
+
+* Warning: Work In Progress
+
+  Be warned that this is a work in progress! Not only is this project
+  wholly untested, it's not even complete. I am earnestly working on
+  this project and expect to finish development on an alpha version in
+  April of 2012.
+
+* Aren't There Other Projects that Do This?
+
+  Yes, there are several other projects that are looking to do this
+  very same thing. The ones that I am aware of are...
+
+  + [[https://github.com/banjiewen/Clothesline][Clothesline]]
+  + [[https://github.com/malcolmsparks/plugboard][Plugboard]]
+
+  This project has slightly different goals from those mentioned
+  above. For one, this project isn't particularly interested in
+  exposing a nice interface to Java code. Our primary concern is to
+  make things easier for the Clojure developer.
+
+  Plugboard is constructed on top of the excellent [[https://github.com/weavejester/compojure][Compojure]] library
+  which in turn builds on [[https://github.com/mmcgrana/ring][Ring]], this project builds on top of Ring
+  directly. The web APIs that I have constructed so far have been
+  coded on Ring and I don't want to pull Compojure into the mix.
+
+* How Does it Work?
+
+  Well, things will be in flux until the first version of the library
+  is completed. That said, we'll be defining resources like this.
+
+  #+BEGIN_SRC clojure
+  (defn hello-resource
+    (bishop/resource
+      {"text/html"} (fn [request]
+                      (str "<html><body><p>Hello "
+                           (:name (:path-info request))
+                           "!</p></body></html>"))
+      {"text/json"} (fn [request]
+                      (str "{\"message\": \"Hello "
+                           (:name (:path-info request))
+                           "!\"}"))))
+  #+END_SRC
+
+  This resource can return either HTML or JSON content, depending on
+  the headers of the request. It expects to have a value in the
+  "path-info" map under the ":name" key. This comes from the routing.
+
+  #+BEGIN_SRC clojure
+  (def routes
+    {["hello" :name] hello-resource
+     ["*"] (bishop/halt-resource 404)})
+  #+END_SRC
+
+  We route incoming request for "/hello/something" to our
+  "hello-resource" functions, anything else will result in sending a
+  "404" code to the client. Bishop will break parse the route and the
+  incoming request to populate the "path-info" map for your
+  application, the goal is to do it in the same way that [[http://wiki.basho.com/Webmachine-Dispatching.html][Webmachine
+  handles dispatch]].  This example is weak, I admit it. I will get some
+  better examples written soon.
+
+  Aside from parsing the URI and matching it to the route, Bishop is
+  doing a lot of other work as well. It will, when complete, cover all
+  of the behavior in this [[http://wiki.basho.com/Webmachine-Diagram.html][HTTP 1.1. flow chart]]. In this instance,
+  Bishop is...
+
+  + Parsing the client URI and route, then populating the "path-info"
+    map
+  + Verifying that the client is trying to either GET or HEAD the
+    resource.
+  + Making sure that the length of the URI isn't totally nutty.
+  + Verifying that our resource can accept either a GET or a HEAD
+    request.
+  + Checking to see if there are authorization headers if our resource
+    requires them (which it does not).
+  + Selecting the appropriate content type to provide to the client
+    and sending the appropriate error if the client asks for a
+    resource that we do not provide.
+
+  And so on. Trust me, you don't want to handle all this logic on your
+  own. And if you don't, you'll end up having problems with content
+  negotiation and caching.
