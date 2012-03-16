@@ -366,4 +366,30 @@
           (is (and (= 200 (:status response))
                    (= "accept-encoding, accept-charset, accept-language, accept"
                       ((:headers response) "vary")))))))
+
+    ;; if-match etag
+
+    (testing "G8 No If-Match"
+      (let [res (resource {"text/html" "testing"})
+            req test-request]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response)))))))
+
+    (testing "G11 E-Tag Matches"
+      (let [res (resource {"text/html" "testing"}
+                          {:generate-etag (fn [r] "testing")})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-match" "\"testing\", \"testing-ish\""}))]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response)))))))
+
+    (testing "G11 E-Tag Does Not Matche"
+      (let [res (resource {"text/html" "testing"}
+                          {:generate-etag (fn [r] "testing")})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-match" "\"not testing\", \"production\""}))]
+        (let [response (run req res)]
+          (is (and (= 412 (:status response)))))))
   )

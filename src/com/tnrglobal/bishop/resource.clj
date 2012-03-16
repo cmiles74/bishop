@@ -25,6 +25,7 @@
    :charsets-provided (fn [request] [])
    :encodings-provided (fn [request] {"identity" com.tnrglobal.bishop.encoding/identity})
    :variances (fn [request] [])
+   :generate-etag (fn [request] nil)
 
    ;; default error handler
    :error (fn [code request response state])})

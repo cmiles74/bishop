@@ -171,17 +171,64 @@
            (if (:acceptable-language request) "accept-language")
            (if (:acceptable-type request) "accept")]))
 
+(defn quoted?
+  "Returns true if the content of the provided String is surrounded by
+  quotes."
+  [text]
+  (if (re-matches #"^\"(.*)\"$" text)
+    true false))
+
+(defn make-quoted
+  "Returns the content of the provided String surrounded by quotes if
+  that content is not already surrounded by quotes."
+  [text]
+  (if (quoted? text)
+    text
+    (str "\"" text "\"")))
+
+(defn make-unquoted
+  "Returns the content of the provided String with the surrounding
+  quotation remarks removed, if they are present."  [text]
+  (if (quoted? text)
+    (apply str (rest (drop-last text)))
+    text))
+
 ;; states
 
 ;;(response-ok request response state :b11)
 
-(defn h7
+(defn h10
   [resource request response state]
   (response-ok request response state :g7))
 
+(defn h7
+  [resource request response state]
+  (response-ok request response state :h7))
+
+(defn g11
+  [resource request response state]
+  (let [if-match-etags (map make-unquoted
+                            (string/split (header-value "if-match"
+                                                        (:headers request))
+                                          #"\s*,\s*"))
+        etag (apply-callback request resource :generate-etag)]
+    (if (some #(= etag %) if-match-etags)
+      #(h10 resource request response state)
+      (response-error 412 request response state :g11))))
+
+(defn g9
+  [resource request response state]
+  (let [if-match-value (header-value "if-match" (:headers request))]
+    (if (and if-match-value
+             (= "*" if-match-value))
+      #(h10 resource request response (assoc state :g9 true))
+      #(g11 resource request response (assoc state :g9 false)))))
+
 (defn g8
   [resource request response state]
-  (response-ok request response state :g7))
+  (if (header-value "if-match" (:headers request))
+    #(g9 resource request response (assoc state :g8 true))
+    #(h10 resource request response (assoc state :g8 false))))
 
 (defn g7
   [resource request response state]
