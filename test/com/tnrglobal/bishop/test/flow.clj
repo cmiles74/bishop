@@ -375,6 +375,14 @@
         (let [response (run req res)]
           (is (and (= 200 (:status response)))))))
 
+    (testing "G9 If-Match *"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-match" "*"}))]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
+
     (testing "G11 E-Tag Matches"
       (let [res (resource {"text/html" "testing"}
                           {:generate-etag (fn [r] "testing")})
@@ -384,12 +392,22 @@
         (let [response (run req res)]
           (is (and (= 200 (:status response)))))))
 
-    (testing "G11 E-Tag Does Not Matche"
+    (testing "G11 E-Tag Does Not Match"
       (let [res (resource {"text/html" "testing"}
                           {:generate-etag (fn [r] "testing")})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-match" "\"not testing\", \"production\""}))]
+        (let [response (run req res)]
+          (is (= 412 (:status response))))))
+
+    ;; if-match is a quoted astrisk
+
+    (testing "H7 If-Match Quoted *"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-match" "\"*\""}))]
         (let [response (run req res)]
           (is (and (= 412 (:status response)))))))
   )

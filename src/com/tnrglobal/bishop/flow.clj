@@ -197,13 +197,20 @@
 
 ;;(response-ok request response state :b11)
 
+(defn i7
+  [resource request response state]
+  (response-ok request response state :i7))
+
 (defn h10
   [resource request response state]
   (response-ok request response state :g7))
 
 (defn h7
   [resource request response state]
-  (response-ok request response state :h7))
+  (let [if-match-value (header-value "if-match" (:headers request))]
+    (if (= "*" (make-unquoted if-match-value))
+      (response-error 412 request response state :h7)
+      #(i7 resource request response (assoc :state :h7 false)))))
 
 (defn g11
   [resource request response state]
