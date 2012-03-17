@@ -32,19 +32,29 @@ compliant services.
 * How Does it Work?
 
   Well, things will be in flux until the first version of the library
-  is completed. That said, we'll be defining resources like this.
+  is completed. So there's that.
+
+  Anyway, let's say you have a function that will say "Hello" to
+  people.
 
   #+BEGIN_SRC clojure
-  (defn hello-resource
+  (defn hello
+    [name]
+    (str "Hello " name "!"))
+  #+END_SRC
+
+  We can then define a resource that says "Hello" in HTML or JSON.
+
+  #+BEGIN_SRC clojure
+  (def hello-resource
     (bishop/resource
       {"text/html"} (fn [request]
-                      (str "<html><body><p>Hello "
-                           (:name (:path-info request))
-                           "!</p></body></html>"))
+                      (hiccup/html
+                        [:p (hello (:name (:path-info request)))]))
+
       {"text/json"} (fn [request]
-                      (str "{\"message\": \"Hello "
-                           (:name (:path-info request))
-                           "!\"}"))))
+                      (clj-json/generate-string
+                        {:message (hello (:name (:path-info request)))}))))
   #+END_SRC
 
   This resource can return either HTML or JSON content, depending on
@@ -59,16 +69,14 @@ compliant services.
 
   We route incoming request for "/hello/something" to our
   "hello-resource" functions, anything else will result in sending a
-  "404" code to the client. Bishop will break parse the route and the
-  incoming request to populate the "path-info" map for your
-  application, the goal is to do it in the same way that [[http://wiki.basho.com/Webmachine-Dispatching.html][Webmachine
-  handles dispatch]].  This example is weak, I admit it. I will get some
-  better examples written soon.
+  "404" code to the client. Bishop will parse the route and the
+  request's URI to populate the "path-info" map for your application,
+  the goal is to do it in the same way that [[http://wiki.basho.com/Webmachine-Dispatching.html][Webmachine handles
+  dispatch]].
 
   Aside from parsing the URI and matching it to the route, Bishop is
-  doing a lot of other work as well. It will, when complete, cover all
-  of the behavior in this [[http://wiki.basho.com/Webmachine-Diagram.html][HTTP 1.1. flow chart]]. In this instance,
-  Bishop is...
+  doing a lot of other work as well. It will cover all of the behavior
+  in this [[http://wiki.basho.com/Webmachine-Diagram.html][HTTP 1.1 flow chart]]. In this instance, Bishop is...
 
   + Parsing the client URI and route, then populating the "path-info"
     map
