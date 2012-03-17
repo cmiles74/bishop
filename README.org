@@ -48,13 +48,13 @@ compliant services.
   #+BEGIN_SRC clojure
   (def hello-resource
     (bishop/resource
-      {"text/html"} (fn [request]
+      {"text/html" (fn [request]
                       (hiccup/html
-                        [:p (hello (:name (:path-info request)))]))
+                        [:p (hello (:name (:path-info request)))]))}
 
-      {"text/json"} (fn [request]
+      {"text/json" (fn [request]
                       (clj-json/generate-string
-                        {:message (hello (:name (:path-info request)))}))))
+                        {:message (hello (:name (:path-info request)))}))}))
   #+END_SRC
 
   This resource can return either HTML or JSON content, depending on
