@@ -54,11 +54,7 @@
    ;; our catch-all handler
    ["*"]      catchall})
 
-(defn app
-  "Creates a new Ring handler representing the Bishop application. In
-  addition to the Bishop handler we're also using the
-  'wrap-stacktrace' middleware for prettier errors."
-  []
+(def app
   (-> (bishop/handler routes)
       (wrap-params)
       (wrap-stacktrace)))

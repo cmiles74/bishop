@@ -74,6 +74,15 @@ compliant services.
   the goal is to do it in the same way that [[http://wiki.basho.com/Webmachine-Dispatching.html][Webmachine handles
   dispatch]].
 
+  Lastly, you can add this as your Ring handler function.
+
+  #+BEGIN_SRC clojure
+  (def app
+    (-> (bishop/handler routes)
+        (wrap-params)
+        (wrap-stacktrace)))
+  #+END_SRC
+
   Aside from parsing the URI and matching it to the route, Bishop is
   doing a lot of other work as well. It will cover all of the behavior
   in this [[http://wiki.basho.com/Webmachine-Diagram.html][HTTP 1.1 flow chart]]. In this instance, Bishop is...
