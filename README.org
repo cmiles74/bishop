@@ -100,6 +100,4 @@ compliant services.
     and sending the appropriate error if the client asks for a
     resource that we do not provide.
 
-  And so on. Trust me, you don't want to handle all this logic on your
-  own. And if you don't, you'll end up having problems with content
-  negotiation and caching.
+  And so on.
