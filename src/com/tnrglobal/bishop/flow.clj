@@ -521,7 +521,7 @@
         ;; the resource contains a map of content types and return
         ;; values or functions
         (map? resource-this)
-        (let [responder (resource-this "text/html")]
+        (let [responder (resource-this (:acceptable-type request))]
 
           (cond
 
