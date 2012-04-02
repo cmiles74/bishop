@@ -5,7 +5,9 @@
 (ns com.tnrglobal.bishop.flow
   (:use [clojure.java.io])
   (:import [org.apache.commons.codec.digest DigestUtils]
-           [java.io ByteArrayOutputStream])
+           [java.io ByteArrayOutputStream]
+           [java.util Date]
+           [org.apache.commons.lang.time DateUtils])
   (:require [clojure.string :as string]))
 
 (defn decide
@@ -193,24 +195,54 @@
     (apply str (rest (drop-last text)))
     text))
 
+(defn parse-header-date
+  "Returns a Date for the provided text. This text should contain a
+  date in one of the three valid HTTP date formats."
+  [text]
+  (DateUtils/parseDate text
+                       (into-array ["EEE, dd MMM yyyy HH:mm:ss zzz"
+                                    "EEEE, dd-MMM-yy HH:mm:ss zzz"
+                                    "EEE MMM d HH:mm:ss yyyy"])))
+
 ;; states
 
 ;;(response-ok request response state :b11)
+
+(defn i12
+  [resource request response state]
+  (response-ok request response state :i12))
 
 (defn i7
   [resource request response state]
   (response-ok request response state :i7))
 
+(defn h12
+  [resource request response state]
+  (response-ok request response state :h12))
+
+(defn h11
+  [resource request response state]
+  (try
+    (let [date (parse-header-date (header-value "if-unmodified-since" (:headers request)))]
+      #(h12 resource
+            (assoc request :if-unmodified-since date)
+            response
+            (assoc state h11 true)))
+    (catch Exception exception
+      #(i12 resource request response (assoc state :h11 false)))))
+
 (defn h10
   [resource request response state]
-  (response-ok request response state :g7))
+  (if (header-value "if-unmodified-since" (:headers request))
+    #(h11 resource request response (assoc state :h10 true))
+    #(i12 resource request response (assoc state :h10 false))))
 
 (defn h7
   [resource request response state]
   (let [if-match-value (header-value "if-match" (:headers request))]
     (if (= "*" (make-unquoted if-match-value))
       (response-error 412 request response state :h7)
-      #(i7 resource request response (assoc :state :h7 false)))))
+      #(i7 resource request response (assoc state :h7 false)))))
 
 (defn g11
   [resource request response state]

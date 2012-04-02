@@ -410,4 +410,42 @@
                                {"if-match" "\"*\""}))]
         (let [response (run req res)]
           (is (and (= 412 (:status response)))))))
+
+    ;; if-unmodified-since
+
+    (testing "H11 If-Unmodified-Since, Format #1"
+      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= 946684799000 (.getTime (response :body))))))))
+
+    (testing "H11 If-Unmodified-Since, Format #2"
+      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-unmodified-since" "Friday, 31-Dec-99 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= 946684799000 (.getTime (response :body))))))))
+
+    (testing "H11 If-Unmodified-Since, Format #3"
+      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-unmodified-since" "Fri Dec 31 23:59:59 1999"}))]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (= 946702799000 (.getTime (response :body))))))))
+
+    (testing "H11 If-Unmodified-Since, Invalid"
+      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-unmodified-since" "I like ice cream!"}))]
+        (let [response (run req res)]
+          (is (and (= 200 (:status response))
+                   (nil? (response :body)))))))
   )
