@@ -8,7 +8,8 @@
         [clojure.test])
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
-  (:import [java.io StringBufferInputStream]))
+  (:import [java.io StringBufferInputStream]
+           [java.util Date]))
 
 (def test-request
   {:remote-addr "0:0:0:0:0:0:0:1%0"
@@ -448,4 +449,22 @@
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (nil? (response :body)))))))
+
+    (testing "H12 If-Unmodified-Since, True"
+      (let [res (resource {"text/html" "testing"}
+                          {:last-modified (fn [r] (Date.))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
+
+    (testing "H12 If-Unmodified-Since, False"
+      (let [res (resource {"text/html" "testing"}
+                          {:last-modified (fn [r] (Date. 139410000000))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (= 412 (:status response))))))
   )

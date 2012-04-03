@@ -218,7 +218,14 @@
 
 (defn h12
   [resource request response state]
-  (response-ok request response state :h12))
+  (let [last-modified (apply-callback request resource :last-modified)
+        if-unmodified-since (parse-header-date
+                             (header-value "if-unmodified-since"
+                                           (:headers request)))]
+    (if (and last-modified (> (.getTime if-unmodified-since)
+                              (.getTime last-modified)))
+      (response-error 412 request response state :h12)
+      #(i12 resource request response (assoc state :h12 false)))))
 
 (defn h11
   [resource request response state]

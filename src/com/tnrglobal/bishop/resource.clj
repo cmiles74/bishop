@@ -26,6 +26,7 @@
    :encodings-provided (fn [request] {"identity" com.tnrglobal.bishop.encoding/identity})
    :variances (fn [request] [])
    :generate-etag (fn [request] nil)
+   :last-modified (fn [request] nil)
 
    ;; default error handler
    :error (fn [code request response state])})
