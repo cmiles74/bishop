@@ -54,7 +54,7 @@
    ;; our catch-all handler
    ["*"]      catchall})
 
-(def app
-  (-> (bishop/handler routes)
-      (wrap-params)
-      (wrap-stacktrace)))
+;; (def app
+;;   (-> (bishop/handler routes)
+;;       (wrap-params)
+;;       (wrap-stacktrace)))
