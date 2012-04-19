@@ -208,9 +208,40 @@
 
 ;;(response-ok request response state :b11)
 
+(defn l13
+  [resource request response state]
+  (response-ok request response state :l13))
+
+(defn j18
+  [resource request response state]
+  (if (or (= :get (:request-method request))
+          (= :head (:request-method request)))
+    (response-error 304 request response state :j18)
+    (response-error 412 request response state :j18)))
+
+(defn k13
+  [resource request response state]
+  (let [if-none-match-etags
+        (map make-unquoted
+             (string/split (header-value "if-none-match" (:headers request))
+                           #"\s*,\s*"))
+        etag (apply-callback request resource :generate-etag)]
+    (if (some #(= etag %) if-none-match-etags)
+      #(l13 resource request response (assoc state :k13 true))
+      #(j18 resource request response (assoc state :k13 false)))))
+
+(defn i13
+  [resource request response state]
+  (let [if-none-match-value (header-value "if-none-match" (:headers request))]
+    (if (and if-none-match-value (= "*" if-none-match-value))
+      #(k13 resource request response (assoc state :i13 true))
+      #(j18 resource request response (assoc state :i13 false)))))
+
 (defn i12
   [resource request response state]
-  (response-ok request response state :i12))
+  (if (header-value "if-none-match" (:headers request))
+    #(i13 resource request response (assoc state :i12 true))
+    #(l13 resource request response (assoc state :i12 false))))
 
 (defn i7
   [resource request response state]
@@ -259,7 +290,7 @@
                                           #"\s*,\s*"))
         etag (apply-callback request resource :generate-etag)]
     (if (some #(= etag %) if-match-etags)
-      #(h10 resource request response state)
+      #(h10 resource request response (assoc state :g11 true))
       (response-error 412 request response state :g11))))
 
 (defn g9

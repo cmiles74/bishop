@@ -467,4 +467,22 @@
                                {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (= 412 (:status response))))))
+
+    (testing "I13 GET, If-None-Match = *, True"
+      (let [res (resource {"text/html" "testing"})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-none-match" "*"}))]
+        (let [response (run req res)]
+          (is (= 304 (:status response))))))
+
+    (testing "I13 POST, If-None-Match = *, True"
+      (let [res (resource {"text/html" "testing"}
+                          {:allowed-methods (fn [request] [:post])})
+            req (assoc (assoc test-request :headers
+                              (concat (:headers test-request)
+                                      {"if-none-match" "*"}))
+                  :request-method :post)]
+        (let [response (run req res)]
+          (is (= 412 (:status response))))))
   )
