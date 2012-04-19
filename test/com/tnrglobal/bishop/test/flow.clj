@@ -490,7 +490,8 @@
 
     (testing "L14 If-Modified-Since, Valid"
       (let [res (resource {"text/html" (fn [request]
-                                         (:if-modified-since request))})
+                                         (:if-modified-since request))}
+                          {:last-modified (fn [request] (Date. 946684799000))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -507,4 +508,14 @@
                                 "Booyah!"}))]
         (let [response (run req res)]
           (is (not (:body response))))))
+
+    (testing "L17 Last-Modified > If-Modified-Since, True"
+      (let [res (resource {"text/html" "testing"}
+                          {:last-modified (fn [request] (Date. 946684799000))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-modified-since"
+                                "Fri, 31 Dec 1969 23:59:59 GMT"}))]
+           (let [response (run req res)]
+             (is (= 304 (:status response))))))
   )

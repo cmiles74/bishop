@@ -212,21 +212,33 @@
   [resource request response state]
   (response-ok request response state :m16))
 
+(defn l17
+  [resource request response state]
+  (let [last-modified (apply-callback request resource :last-modified)
+        if-modified-since (:if-modified-since request)]
+    (if (> (.getTime last-modified)
+           (.getTime if-modified-since))
+      (response-error 304 request response state :l17)
+      #(m16 resource request response (assoc state :l17 false)))))
+
 (defn l15
   [resource request response state]
-  (response-ok request response state :l15))
+  (if (> (.getTime (:if-modified-since request))
+         (.getTime (Date.)))
+    #(m16 resource request response (assoc state :l15 true))
+    #(l17 resource request response (assoc state :l15 false))))
 
 (defn l14
   [resource request response state]
   (try
     (let [date (parse-header-date (header-value "if-modified-since"
                                                 (:headers request)))]
-      #(m16 resource
+      #(l15 resource
             (assoc request :if-modified-since date)
             response
             (assoc state l14 true)))
     (catch Exception exception
-      #(l15 resource request response (assoc state :l14 false)))))
+      #(m16 resource request response (assoc state :l14 false)))))
 
 (defn l13
   [resource request response state]
