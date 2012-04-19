@@ -208,9 +208,31 @@
 
 ;;(response-ok request response state :b11)
 
+(defn m16
+  [resource request response state]
+  (response-ok request response state :m16))
+
+(defn l15
+  [resource request response state]
+  (response-ok request response state :l15))
+
+(defn l14
+  [resource request response state]
+  (try
+    (let [date (parse-header-date (header-value "if-modified-since"
+                                                (:headers request)))]
+      #(m16 resource
+            (assoc request :if-modified-since date)
+            response
+            (assoc state l14 true)))
+    (catch Exception exception
+      #(l15 resource request response (assoc state :l14 false)))))
+
 (defn l13
   [resource request response state]
-  (response-ok request response state :l13))
+  (if (header-value "if-modified-since" (:headers request))
+    #(l14 resource request response (assoc state :l13 true))
+    #(m16 resource request response (assoc state :l13 false))))
 
 (defn j18
   [resource request response state]

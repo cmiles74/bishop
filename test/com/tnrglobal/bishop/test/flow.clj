@@ -455,7 +455,8 @@
                           {:last-modified (fn [r] (Date.))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
-                               {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
+                               {"if-unmodified-since"
+                                "Fri, 31 Dec 1999 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (= 200 (:status response))))))
 
@@ -464,7 +465,8 @@
                           {:last-modified (fn [r] (Date. 139410000000))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
-                               {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
+                               {"if-unmodified-since"
+                                "Fri, 31 Dec 1999 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (= 412 (:status response))))))
 
@@ -485,4 +487,24 @@
                   :request-method :post)]
         (let [response (run req res)]
           (is (= 412 (:status response))))))
+
+    (testing "L14 If-Modified-Since, Valid"
+      (let [res (resource {"text/html" (fn [request]
+                                         (:if-modified-since request))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-modified-since"
+                                "Fri, 31 Dec 1999 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (:body response)))))
+
+    (testing "L14 If-Modified-Since, Invalid"
+      (let [res (resource {"text/html" (fn [request]
+                                         (:if-modified-since request))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-modified-since"
+                                "Booyah!"}))]
+        (let [response (run req res)]
+          (is (not (:body response))))))
   )
