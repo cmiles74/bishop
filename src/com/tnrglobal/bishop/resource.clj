@@ -1,7 +1,8 @@
 ;;
 ;; Defines a resource and default callback functions.
 ;;
-(ns com.tnrglobal.bishop.resource)
+(ns com.tnrglobal.bishop.resource
+  (:require [com.tnrglobal.bishop.encoding :as encoding]))
 
 (defn default-handlers
   "Returns a map of all of the supported handlers and default
@@ -23,7 +24,7 @@
    :options (fn [request] {})
    :languages-provided (fn [reqeust] [])
    :charsets-provided (fn [request] [])
-   :encodings-provided (fn [request] {"identity" com.tnrglobal.bishop.encoding/identity})
+   :encodings-provided (fn [request] {"identity" encoding/identity})
    :variances (fn [request] [])
    :generate-etag (fn [request] nil)
    :last-modified (fn [request] nil)
