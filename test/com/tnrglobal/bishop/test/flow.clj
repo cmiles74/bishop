@@ -503,6 +503,12 @@
         (let [response (run req res)]
           (is (= 200 (:status response))))))
 
+    (testing "L13 No If-Modified-Since"
+      (let [res (resource {"text/html" "testing"})
+            req test-request]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
+
     (testing "L14 If-Modified-Since, Valid"
       (let [res (resource {"text/html" (fn [request]
                                          (:if-modified-since request))}
