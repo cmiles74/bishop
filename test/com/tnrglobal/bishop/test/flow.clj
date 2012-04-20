@@ -503,7 +503,7 @@
         (let [response (run req res)]
           (is (= 200 (:status response))))))
 
-    (testing "L13 No If-Modified-Since"
+    (testing "G8, H10, L13 No If-Modified-Since"
       (let [res (resource {"text/html" "testing"})
             req test-request]
         (let [response (run req res)]
