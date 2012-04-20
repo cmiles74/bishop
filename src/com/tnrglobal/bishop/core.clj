@@ -166,7 +166,9 @@
   ([response-map handler-map]
 
      ;; combine the default handlers with the map provided
-     {:handlers (merge (default-handlers) handler-map)
+     {:handlers (merge (default-handlers)
+                       handler-map
+                       {:content-types-provided (keys response-map)})
       :response response-map})
 
   ([response-map]

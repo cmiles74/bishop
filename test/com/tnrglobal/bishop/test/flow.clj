@@ -470,6 +470,12 @@
         (let [response (run req res)]
           (is (= 412 (:status response))))))
 
+    (testing "I12 No If-None-Match Header"
+      (let [res (resource {"text/html" "testing"})
+            req test-request]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
+
     (testing "I13 GET, If-None-Match = *, True"
       (let [res (resource {"text/html" "testing"})
             req (assoc test-request :headers
@@ -487,6 +493,15 @@
                   :request-method :post)]
         (let [response (run req res)]
           (is (= 412 (:status response))))))
+
+    (testing "K13 ETag not in If-None-Match"
+      (let [res (resource {"text/html" "testing"}
+                          {:generate-etag (fn [request] "eb54d63b7351fb3a92bf008179cdacd2")})
+            req (assoc test-request :headers
+                              (concat (:headers test-request)
+                                      {"if-none-match" "\"ba51d0516daf8d09919af69e8fc8145d\""}))]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
 
     (testing "L14 If-Modified-Since, Valid"
       (let [res (resource {"text/html" (fn [request]
@@ -542,4 +557,25 @@
                                     "Fri, 31 Dec 1974 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (= 304 (:status response))))))
+
+    (testing "018 Multiple-Representations, False"
+      (let [res (resource {"text/html" "testing"}
+                          {:last-modified (fn [request] (Date. 946684799000))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-modified-since"
+                                "Fri, 31 Dec 2010 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
+
+    (testing "018 Multiple-Representations, True"
+      (let [res (resource {"text/html" "testing"}
+                          {:last-modified (fn [request] (Date. 946684799000))
+                           :multiple-representations (fn [request] true)})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-modified-since"
+                                "Fri, 31 Dec 2010 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (= 300 (:status response))))))
   )

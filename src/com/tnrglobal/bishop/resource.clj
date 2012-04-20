@@ -29,6 +29,9 @@
    :generate-etag (fn [request] nil)
    :last-modified (fn [request] nil)
    :delete-resource (fn [request] false)
+   :expires (fn [request] nil)
+   :content-types-provided (fn [request] ["text/html"])
+   :multiple-representations (fn [request] false)
 
    ;; default error handler
    :error (fn [code request response state])})

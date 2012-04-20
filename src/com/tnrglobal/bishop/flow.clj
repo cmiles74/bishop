@@ -7,8 +7,11 @@
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
            [java.util Date]
+           [java.text SimpleDateFormat]
            [org.apache.commons.lang.time DateUtils])
   (:require [clojure.string :as string]))
+
+(def HTTP_DATE_FORMAT (SimpleDateFormat. "EEE, dd MMM yyyy HH:mm:ss zzz"))
 
 (defn decide
   "Calls the provided test function (test-fn). If the function's
@@ -204,6 +207,24 @@
                                     "EEEE, dd-MMM-yy HH:mm:ss zzz"
                                     "EEE MMM d HH:mm:ss yyyy"])))
 
+(defn header-date
+  "Returns a textual date in the correct format for use in an HTTP
+  header."
+  [date]
+  (.format HTTP_DATE_FORMAT date))
+
+(defn caching-headers
+  "Returns a sequence with the appropriate caching headers for the
+  provided resource attached."
+  [resource request response]
+  (let [etag (apply-callback request resource :generate-etag)
+        expires (apply-callback request resource :expires)
+        modified (apply-callback request resource :last-modified)]
+    (merge (:headers response)
+           (if etag {"ETag" (make-quoted etag)})
+           (if expires {"Expires" (header-date expires)})
+           (if modified {"Last-Modified" (header-date modified)}))))
+
 ;; states
 
 ;;(response-ok request response state :b11)
@@ -212,9 +233,43 @@
   [resource request response state]
   (response-ok request response state :o20))
 
+(defn o18b
+  [resource request response state]
+  (if (apply-callback request resource :multiple-representations)
+    (response-error 300 request response state :o18b)
+    (response-ok request response state :o18b)))
+
+(defn o18
+  [resource request response state]
+  (if (or (= :get (:request-method request))
+          (= :head (:request-method request)))
+
+    (let [headers (caching-headers resource request response)
+          response-out (assoc response :headers
+                              (merge (:header response) headers))]
+      #(o18b resource request response-out (assoc state :o18 true)))
+
+    #(o18b resource request response (assoc state :o18 false))))
+
+(defn o14
+  [resource request response state]
+  (response-ok request response state :o14))
+
+(defn o16
+  [resource request response state]
+  (if (= :put (:request-method request))
+    #(o14 resource request response (assoc state :o16 true))
+    #(o18 resource request response (assoc state :016 false))))
+
+(defn n11
+  [resource request response state]
+  (response-ok request response state :n11))
+
 (defn n16
   [resource request response state]
-  (response-ok request response state :n16))
+  (if (= :post (:request-method request))
+    #(n11 resource request response (assoc state :n16 true))
+    #(o16 resource request response (assoc state :n16 false))))
 
 (defn m20
   [resource request response state]
@@ -278,15 +333,15 @@
                            #"\s*,\s*"))
         etag (apply-callback request resource :generate-etag)]
     (if (some #(= etag %) if-none-match-etags)
-      #(l13 resource request response (assoc state :k13 true))
-      #(j18 resource request response (assoc state :k13 false)))))
+      #(j18 resource request response (assoc state :k13 true))
+      #(l13 resource request response (assoc state :k13 false)))))
 
 (defn i13
   [resource request response state]
   (let [if-none-match-value (header-value "if-none-match" (:headers request))]
     (if (and if-none-match-value (= "*" if-none-match-value))
-      #(k13 resource request response (assoc state :i13 true))
-      #(j18 resource request response (assoc state :i13 false)))))
+      #(j18 resource request response (assoc state :i13 true))
+      #(k13 resource request response (assoc state :i13 false)))))
 
 (defn i12
   [resource request response state]
@@ -644,6 +699,7 @@
         (map? resource-this)
         (let [responder (resource-this (:acceptable-type request))]
 
+          ;; TODO: what about a HEAD request?
           (cond
 
             ;; invoke the response function
