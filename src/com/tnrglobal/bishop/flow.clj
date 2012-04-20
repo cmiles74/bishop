@@ -208,9 +208,26 @@
 
 ;;(response-ok request response state :b11)
 
+(defn o20
+  [resource request response state]
+  (response-ok request response state :o20))
+
+(defn n16
+  [resource request response state]
+  (response-ok request response state :n16))
+
+(defn m20
+  [resource request response state]
+  (let [delete-resource (apply-callback request resource :delete-resource)]
+    (if delete-resource
+      (response-error 202 request response state :n16)
+      #(o20 resource request response (assoc state :m20 false)))))
+
 (defn m16
   [resource request response state]
-  (response-ok request response state :m16))
+  (if (= :delete (:request-method request))
+    #(m20 resource request response (assoc state :m16 true))
+    #(n16 resource request response (assoc state :m16 false))))
 
 (defn l17
   [resource request response state]

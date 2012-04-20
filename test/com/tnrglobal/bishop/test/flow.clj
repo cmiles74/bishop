@@ -518,4 +518,28 @@
                                 "Fri, 31 Dec 1969 23:59:59 GMT"}))]
            (let [response (run req res)]
              (is (= 304 (:status response))))))
+
+    (testing "M20 DELETE If-Umodified-Since, True"
+      (let [res (resource {"text/html" "testing"}
+                          {:allowed-methods (fn [request] [:delete])
+                           :last-modified (fn [request] (Date. 946684799000))
+                           :delete-resource (fn [request] true)})
+            req (assoc (assoc test-request :request-method :delete)
+                  :headers (concat (:headers test-request)
+                                   {"if-modified-since"
+                                    "Fri, 31 Dec 2011 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (= 202 (:status response))))))
+
+    (testing "M20 DELETE If-Umodified-Since, False"
+      (let [res (resource {"text/html" "testing"}
+                          {:allowed-methods (fn [request] [:delete])
+                           :last-modified (fn [request] (Date. 946684799000))
+                           :delete-resource (fn [request] true)})
+            req (assoc (assoc test-request :request-method :delete)
+                  :headers (concat (:headers test-request)
+                                   {"if-modified-since"
+                                    "Fri, 31 Dec 1974 23:59:59 GMT"}))]
+        (let [response (run req res)]
+          (is (= 304 (:status response))))))
   )
