@@ -682,6 +682,15 @@
 
   (assoc response :body (pr-str state)))
 
+(defn validate-body
+  "Ensures that the correct 200 code is returned for the provided
+  response."
+  [response]
+  (if (or (nil? (:body response))
+          (> 1 (count (str (:body response)))))
+    (assoc response :status 204)
+    response))
+
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
   returns the final response map for the request."
@@ -702,13 +711,18 @@
           ;; TODO: what about a HEAD request?
           (cond
 
-            ;; invoke the response function
+            ;; invoke the response function234
+
             (fn? responder)
-            (assoc response :body (responder request))
+            (validate-body
+             (assoc (assoc response :body (responder request))
+               :status code))
 
             ;; return the response value
             :else
-            (assoc response :body responder)))
+            (validate-body
+             (assoc (assoc response :body responder)
+               :status code))))
 
         ;; the resource is a halt
         (and (coll? resource-this) (= :halt (first resource-this)))

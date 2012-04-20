@@ -218,7 +218,7 @@
       (let [res (resource {"text/html" (fn [r] (:acceptable-language r))})
             req test-request]
         (let [response (run req res)]
-          (is (and (= 200 (:status response))
+          (is (and (= 204 (:status response))
                    (= nil (:body response)))))))
 
     (testing "D4 Valid"
@@ -263,7 +263,7 @@
       (let [res (resource {"text/html" (fn [r] (:acceptable-charset r))})
             req test-request]
         (let [response (run req res)]
-          (is (and (= 200 (:status response))
+          (is (and (= 204 (:status response))
                    (= nil (:body response)))))))
 
     (testing "E5 Valid"
@@ -308,7 +308,7 @@
       (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
             req test-request]
         (let [response (run req res)]
-          (is (and (= 200 (:status response))
+          (is (and (= 204 (:status response))
                    (= nil (:body response)))))))
 
     (testing "F6 Valid"
@@ -447,7 +447,7 @@
                        (concat (:headers test-request)
                                {"if-unmodified-since" "I like ice cream!"}))]
         (let [response (run req res)]
-          (is (and (= 200 (:status response))
+          (is (and (= 204 (:status response))
                    (nil? (response :body)))))))
 
     (testing "H12 If-Unmodified-Since, True"
