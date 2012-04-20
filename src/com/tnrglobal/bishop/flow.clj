@@ -6,12 +6,15 @@
   (:use [clojure.java.io])
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
-           [java.util Date]
+           [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
            [org.apache.commons.lang.time DateUtils])
   (:require [clojure.string :as string]))
 
-(def HTTP_DATE_FORMAT (SimpleDateFormat. "EEE, dd MMM yyyy HH:mm:ss zzz"))
+(def HTTP_DATE_FORMAT (doto
+                          (SimpleDateFormat. "EEE, dd MMM yyyy HH:mm:ss zzz"
+                                             Locale/US)
+                        (.setTimeZone (TimeZone/getTimeZone "UTC"))))
 
 (defn decide
   "Calls the provided test function (test-fn). If the function's
@@ -682,13 +685,18 @@
 
   (assoc response :body (pr-str state)))
 
+
 (defn validate-body
   "Ensures that the correct 200 code is returned for the provided
   response."
-  [response]
-  (if (or (nil? (:body response))
-          (> 1 (count (str (:body response)))))
+  [request response]
+
+  ;; if this isn't a head request, 200 responses without a body should
+  ;; be 204
+  (if (and (nil? (:body response))
+           (not (= :head (:request-method request))))
     (assoc response :status 204)
+
     response))
 
 (defn respond
@@ -708,21 +716,19 @@
         (map? resource-this)
         (let [responder (resource-this (:acceptable-type request))]
 
-          ;; TODO: what about a HEAD request?
           (cond
 
-            ;; invoke the response function234
-
+            ;; invoke the response function
             (fn? responder)
-            (validate-body
-             (assoc (assoc response :body (responder request))
-               :status code))
+            (validate-body request
+                           (assoc (assoc response :body (responder request))
+                             :status code))
 
             ;; return the response value
             :else
-            (validate-body
-             (assoc (assoc response :body responder)
-               :status code))))
+            (validate-body request
+                           (assoc (assoc response :body responder)
+                             :status code))))
 
         ;; the resource is a halt
         (and (coll? resource-this) (= :halt (first resource-this)))
