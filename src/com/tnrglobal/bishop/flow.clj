@@ -228,13 +228,38 @@
            (if expires {"Expires" (header-date expires)})
            (if modified {"Last-Modified" (header-date modified)}))))
 
+(defn add-body
+  "Calculates and appends the body to the provided request."
+  [resource request response]
+  (cond
+
+    ;; the resource contains a map of content types and return
+    ;; values or functions
+    (map? resource)
+    (let [responder (resource (:acceptable-type request))]
+
+      (cond
+
+        ;; invoke the response function
+        (fn? responder)
+        (assoc response :body (responder request))
+
+        ;; return the response value
+        :else
+        (assoc response :body responder)))
+
+    ;; the resource is a halt
+    (and (coll? resource) (= :halt (first resource)))
+    (assoc response :status (second resource))
+
+    ;; the resource is an error
+    (and (coll? resource) (= :error (first resource)))
+    (merge response {:status 500
+                     :body (second resource)})))
+
 ;; states
 
 ;;(response-ok request response state :b11)
-
-(defn o20
-  [resource request response state]
-  (response-ok request response state :o20))
 
 (defn o18b
   [resource request response state]
@@ -247,12 +272,25 @@
   (if (or (= :get (:request-method request))
           (= :head (:request-method request)))
 
+    ;; add our caching headers and the response body to the response
     (let [headers (caching-headers resource request response)
-          response-out (assoc response :headers
-                              (merge (:header response) headers))]
-      #(o18b resource request response-out (assoc state :o18 true)))
+          response-out (assoc (add-body resource request response)
+                         :headers (merge (:header response) headers))]
+
+      ;; the reponse indicates a specific status code, bail now
+      (if (:status response-out)
+        (response-error (:status response-out) request response-out state :o18)
+
+        ;; processing continues normally
+        #(o18b resource request response-out (assoc state :o18 true))))
 
     #(o18b resource request response (assoc state :o18 false))))
+
+(defn o20
+  [resource request response state]
+  (if (nil? (:body response))
+    (response-error 204 request response state :o20)
+    #(o18 resource request response (assoc state :o20 false))))
 
 (defn o14
   [resource request response state]
@@ -278,8 +316,8 @@
   [resource request response state]
   (let [delete-resource (apply-callback request resource :delete-resource)]
     (if delete-resource
-      (response-error 202 request response state :n16)
-      #(o20 resource request response (assoc state :m20 false)))))
+      #(o20 resource request response (assoc state :m20 true))
+      (response-error 202 request response state :n16))))
 
 (defn m16
   [resource request response state]
@@ -686,63 +724,20 @@
   (assoc response :body (pr-str state)))
 
 
-(defn validate-body
-  "Ensures that the correct 200 code is returned for the provided
-  response."
-  [request response]
-
-  ;; if this isn't a head request, 200 responses without a body should
-  ;; be 204
-  (if (and (nil? (:body response))
-           (not (= :head (:request-method request))))
-    (assoc response :status 204)
-
-    response))
-
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
   returns the final response map for the request."
   [[code request response state] resource]
 
-  (if (= 200 code)
+  (if (and (= 200 code)
+           (nil? (:body response)))
 
     ;; get a handle on our response
     (let [resource-this (:response resource)]
 
-      (cond
-
-        ;; the resource contains a map of content types and return
-        ;; values or functions
-        (map? resource-this)
-        (let [responder (resource-this (:acceptable-type request))]
-
-          (cond
-
-            ;; invoke the response function
-            (fn? responder)
-            (validate-body request
-                           (assoc (assoc response :body (responder request))
-                             :status code))
-
-            ;; return the response value
-            :else
-            (validate-body request
-                           (assoc (assoc response :body responder)
-                             :status code))))
-
-        ;; the resource is a halt
-        (and (coll? resource-this) (= :halt (first resource-this)))
-        (assoc response :status (second resource-this))
-
-        ;; the resource is an error
-        (and (coll? resource-this) (= :error (first resource-this)))
-        (merge response {:status 500
-                         :body (second resource-this)})
-
-        ;; we can't handle this resource
-        :else
-        (assoc response
-          :body ((:error (:handlers resource)) code request response state))))
+      ;; add the missing body and status code to the response
+      (assoc (add-body resource-this request response)
+        :status code))
 
     ;; we have an error response code
     (assoc response
