@@ -729,8 +729,10 @@
   returns the final response map for the request."
   [[code request response state] resource]
 
+  ;; add the body to all 200 messages if the body isn't already
+  ;; present
   (if (and (= 200 code)
-           (nil? (:body response)))
+           (not (some #(= "body" %) (keys response))))
 
     ;; get a handle on our response
     (let [resource-this (:response resource)]
