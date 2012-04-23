@@ -32,6 +32,7 @@
    :expires (fn [request] nil)
    :content-types-provided (fn [request] ["text/html"])
    :multiple-representations (fn [request] false)
+   :is_conflict? (fn [request] false)
 
    ;; default error handler
    :error (fn [code request response state])})
