@@ -596,4 +596,12 @@
                                 "Fri, 31 Dec 2010 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (= 300 (:status response))))))
+
+    (testing "016 PUT Conflict"
+      (let [res (resource {"text/html" "testing"}
+                          {:allowed-methods (fn [request] [:put])
+                           :is_conflict? (fn [request] true)})
+            req (assoc test-request :request-method :put)]
+        (let [response (run req res)]
+          (is (= 409 (:status response))))))
   )

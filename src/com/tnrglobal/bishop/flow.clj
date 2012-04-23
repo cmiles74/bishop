@@ -267,6 +267,10 @@
     (response-error 300 request response state :o18b)
     (response-ok request response state :o18b)))
 
+(defn p11
+  [resource request response state]
+  (response-ok request response state :p11))
+
 (defn o18
   [resource request response state]
   (if (or (= :get (:request-method request))
@@ -294,7 +298,9 @@
 
 (defn o14
   [resource request response state]
-  (response-ok request response state :o14))
+  (if (apply-callback request resource :is_conflict?)
+    (response-error 409 request response state :o14)
+    #(p11 resource request response (assoc state :o14 false))))
 
 (defn o16
   [resource request response state]
