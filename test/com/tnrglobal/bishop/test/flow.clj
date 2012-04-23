@@ -199,14 +199,14 @@
 
     ;; acceptable content type?
 
-    (testing "B4 Valid"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-type r))})
+    (testing "C4 Valid"
+      (let [res (resource {"text/html" (fn [r] {:body (r :acceptable-type)})})
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= "text/html" (:body response)))))))
 
-    (testing "B4 Invalid"
+    (testing "C4 Invalid"
       (let [res (resource {"text/plain" "testing"})
             req (assoc-in test-request [:headers "accept"]
                        "text/html,application/xhtml+xml,application/xml;q=0.9")]
@@ -215,14 +215,14 @@
     ;; acceptable language?
 
     (testing "D4 Unspecified"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-language r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})})
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= nil (:body response)))))))
 
     (testing "D4 Valid"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-language r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})})
             req (assoc-in test-request [:headers "accept-language"]
                           "en,*;q=0.8")]
         (let [response (run req res)]
@@ -243,7 +243,7 @@
         (is (= 200 (:status (run req res))))))
 
     (testing "D5 Available"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-language r))}
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})}
                           {:languages-provided (fn [r] ["en"])})
             req (assoc-in test-request [:headers "accept-language"]
                           "da,en;q=0.8")]
@@ -260,14 +260,14 @@
     ;; acceptable charset?
 
     (testing "E5 Unspecified"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-charset r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})})
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= nil (:body response)))))))
 
     (testing "E5 Valid"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-charset r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})})
             req (assoc-in test-request [:headers "accept-charset"]
                           "utf8,*;q=0.8")]
         (let [response (run req res)]
@@ -288,7 +288,7 @@
         (is (= 200 (:status (run req res))))))
 
     (testing "E6 Available"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-charset r))}
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})}
                           {:charsets-provided (fn [r] ["UTF8"])})
             req (assoc-in test-request [:headers "accept-charset"]
                           "utf8,iso-8859-1;q=0.8")]
@@ -305,14 +305,14 @@
     ;; acceptable encoding?
 
     (testing "F6 Unspecified"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= nil (:body response)))))))
 
     (testing "F6 Valid"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
             req (assoc-in test-request [:headers "accept-encoding"]
                           "gzip,*;q=0.8")]
         (let [response (run req res)]
@@ -333,7 +333,7 @@
         (is (= 200 (:status (run req res))))))
 
     (testing "F7 Available"
-      (let [res (resource {"text/html" (fn [r] (:acceptable-encoding r))})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
             req (assoc-in test-request [:headers "accept-encoding"]
                           "gzip,*;q=0.8")]
         (let [response (run req res)]
@@ -415,7 +415,7 @@
     ;; if-unmodified-since
 
     (testing "H11 If-Unmodified-Since, Format #1"
-      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+      (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
@@ -424,7 +424,7 @@
                    (= 946684799000 (.getTime (response :body))))))))
 
     (testing "H11 If-Unmodified-Since, Format #2"
-      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+      (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-unmodified-since" "Friday, 31-Dec-99 23:59:59 GMT"}))]
@@ -433,7 +433,7 @@
                    (= 946684799000 (.getTime (response :body))))))))
 
     (testing "H11 If-Unmodified-Since, Format #3"
-      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+      (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-unmodified-since" "Fri Dec 31 23:59:59 1999"}))]
@@ -442,7 +442,7 @@
                    (= 946702799000 (.getTime (response :body))))))))
 
     (testing "H11 If-Unmodified-Since, Invalid"
-      (let [res (resource {"text/html" (fn [r] (r :if-unmodified-since))})
+      (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-unmodified-since" "I like ice cream!"}))]
@@ -511,7 +511,7 @@
 
     (testing "L14 If-Modified-Since, Valid"
       (let [res (resource {"text/html" (fn [request]
-                                         (:if-modified-since request))}
+                                         {:body (:if-modified-since request)})}
                           {:last-modified (fn [request] (Date. 946684799000))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
@@ -522,7 +522,7 @@
 
     (testing "L14 If-Modified-Since, Invalid"
       (let [res (resource {"text/html" (fn [request]
-                                         (:if-modified-since request))})
+                                         {:body (:if-modified-since request)})})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -576,7 +576,7 @@
         (let [response (run req res)]
           (is (= 304 (:status response))))))
 
-    (testing "018 Multiple-Representations, False"
+    (testing "O18 Multiple-Representations, False"
       (let [res (resource {"text/html" "testing"}
                           {:last-modified (fn [request] (Date. 946684799000))})
             req (assoc test-request :headers
@@ -586,7 +586,7 @@
         (let [response (run req res)]
           (is (= 200 (:status response))))))
 
-    (testing "018 Multiple-Representations, True"
+    (testing "O18 Multiple-Representations, True"
       (let [res (resource {"text/html" "testing"}
                           {:last-modified (fn [request] (Date. 946684799000))
                            :multiple-representations (fn [request] true)})
@@ -597,11 +597,28 @@
         (let [response (run req res)]
           (is (= 300 (:status response))))))
 
-    (testing "016 PUT Conflict"
+    (testing "O16 PUT Conflict"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:put])
                            :is_conflict? (fn [request] true)})
             req (assoc test-request :request-method :put)]
         (let [response (run req res)]
           (is (= 409 (:status response))))))
+
+    (testing "O16 PUT New Resource"
+      (let [res (resource {"text/html" (fn [request]
+                                         {:body "testing"
+                                          :headers {"location" "/testing/1209"}})}
+                          {:allowed-methods (fn [request] [:put])})
+            req (assoc test-request :request-method :put)]
+        (let [response (run req res)]
+          (is (= 201 (:status response))))))
+
+    (testing "O16 PUT, Not New Resource"
+      (let [res (resource {"text/html" (fn [request]
+                                         {:body "testing"})}
+                          {:allowed-methods (fn [request] [:put])})
+            req (assoc test-request :request-method :put)]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
   )

@@ -12,13 +12,13 @@
 ;; defines a resource that says hello
 (def hello
   (bishop/resource
-   {"text/html" (fn [request]
+   {"text/html" (fn [request response]
                   (str "<html><body><p>Hello "
                        (:name (:path-info request))
                        "! at "(Date.)
                        "</p></body></html>\n\n"
                        request "\n"))
-    "text/xml"  (fn [request]
+    "text/xml"  (fn [request response]
                   (str "<message><text>Hello "
                        (:name (:path-info request))
                        " at "(Date.)
@@ -27,7 +27,7 @@
 ;; defines a resource that will handle any un-mapped URI request
 (def catchall
   (bishop/resource
-   {"text/html" (fn [request]
+   {"text/html" (fn [request response]
                   (str "What? What?!"))}))
 
 ;; creates a simple Bishop application that routes incoming requests

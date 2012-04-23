@@ -224,9 +224,14 @@
         expires (apply-callback request resource :expires)
         modified (apply-callback request resource :last-modified)]
     (merge (:headers response)
-           (if etag {"ETag" (make-quoted etag)})
-           (if expires {"Expires" (header-date expires)})
-           (if modified {"Last-Modified" (header-date modified)}))))
+           (if etag {"etag" (make-quoted etag)})
+           (if expires {"expires" (header-date expires)})
+           (if modified {"last-modified" (header-date modified)}))))
+
+(defn merge-responses
+  [response-1 response-2]
+  (merge-with (fn [former latter])
+              response-1 response-2))
 
 (defn add-body
   "Calculates and appends the body to the provided request."
@@ -237,12 +242,23 @@
     ;; values or functions
     (map? resource)
     (let [responder (resource (:acceptable-type request))]
-
       (cond
 
         ;; invoke the response function
         (fn? responder)
-        (assoc response :body (responder request))
+        (do
+          (merge-with (fn [former latter]
+                        (cond
+
+                          (and (map? former) (map? latter))
+                          (merge-with concat former latter)
+
+                          (nil? former)
+                          latter
+
+                          :else
+                          [former latter]))
+                      response (responder request)))
 
         ;; return the response value
         :else
@@ -257,6 +273,33 @@
     (merge response {:status 500
                      :body (second resource)})))
 
+(defn respond
+  "This function provides an endpoint for our processing pipeline, it
+  returns the final response map for the request."
+  [[code request response state] resource]
+
+  ;; add the body to all 200 messages if the body isn't already
+  ;; present
+  (if (= 200 code)
+
+    (if (nil? (:body response))
+
+      ;; add the missing body and status code to the response
+      (assoc (add-body (:response resource) request response) :status code)
+
+      response)
+
+    ;; we have an error response code
+    (assoc response
+      :body ((:error (:handlers resource)) code request response state))))
+
+(defn respond-error
+  "This function provides an endpoint for our processing pipeline, it
+  returns the final error response map for the request."
+  [[code request response state] resource]
+
+  (assoc response :body (pr-str state)))
+
 ;; states
 
 ;;(response-ok request response state :b11)
@@ -267,9 +310,6 @@
     (response-error 300 request response state :o18b)
     (response-ok request response state :o18b)))
 
-(defn p11
-  [resource request response state]
-  (response-ok request response state :p11))
 
 (defn o18
   [resource request response state]
@@ -278,7 +318,7 @@
 
     ;; add our caching headers and the response body to the response
     (let [headers (caching-headers resource request response)
-          response-out (assoc (add-body resource request response)
+          response-out (assoc (add-body (:response resource) request response)
                          :headers (merge (:header response) headers))]
 
       ;; the reponse indicates a specific status code, bail now
@@ -295,6 +335,14 @@
   (if (nil? (:body response))
     (response-error 204 request response state :o20)
     #(o18 resource request response (assoc state :o20 false))))
+
+(defn p11
+  [resource request response state]
+  ;; TODO: Should we add the body here?
+  (let [response-out (add-body (:response resource) request response)]
+    (if (not (some #(= "location" %) (keys (:headers response-out))))
+      #(o20 resource request response-out (assoc state :p11 true))
+      (response-error 201 request response-out state :p11))))
 
 (defn o14
   [resource request response state]
@@ -721,35 +769,6 @@
   #(b13 resource request {} {}))
 
 ;; other functions
-
-(defn respond-error
-  "This function provides an endpoint for our processing pipeline, it
-  returns the final error response map for the request."
-  [[code request response state] resource]
-
-  (assoc response :body (pr-str state)))
-
-
-(defn respond
-  "This function provides an endpoint for our processing pipeline, it
-  returns the final response map for the request."
-  [[code request response state] resource]
-
-  ;; add the body to all 200 messages if the body isn't already
-  ;; present
-  (if (and (= 200 code)
-           (not (some #(= "body" %) (keys response))))
-
-    ;; get a handle on our response
-    (let [resource-this (:response resource)]
-
-      ;; add the missing body and status code to the response
-      (assoc (add-body resource-this request response)
-        :status code))
-
-    ;; we have an error response code
-    (assoc response
-      :body ((:error (:handlers resource)) code request response state))))
 
 (defn run
   "Applies the provided request and resource to our flow state
