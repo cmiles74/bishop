@@ -260,18 +260,25 @@
                           [former latter]))
                       response (responder request)))
 
+        ;; merge the response
+        (map? responder)
+        (do
+          (merge-with (fn [former latter]
+                        (cond
+
+                          (and (map? former) (map? latter))
+                          (merge-with concat former latter)
+
+                          (nil? former)
+                          latter
+
+                          :else
+                          [former latter]))
+                      response responder))
+
         ;; return the response value
         :else
-        (assoc response :body responder)))
-
-    ;; the resource is a halt
-    (and (coll? resource) (= :halt (first resource)))
-    (assoc response :status (second resource))
-
-    ;; the resource is an error
-    (and (coll? resource) (= :error (first resource)))
-    (merge response {:status 500
-                     :body (second resource)})))
+        (assoc response :body responder)))))
 
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
@@ -291,14 +298,8 @@
 
     ;; we have an error response code
     (assoc response
-      :body ((:error (:handlers resource)) code request response state))))
-
-(defn respond-error
-  "This function provides an endpoint for our processing pipeline, it
-  returns the final error response map for the request."
-  [[code request response state] resource]
-
-  (assoc response :body (pr-str state)))
+      :body (concat (:body response)
+             ((:error (:handlers resource)) code request response state)))))
 
 ;; states
 

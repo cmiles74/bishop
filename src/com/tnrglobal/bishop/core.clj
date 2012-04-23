@@ -164,7 +164,6 @@
    file and inspect the 'default-handlers' function for a list of the
    valid keys and their default values."
   ([response-map handler-map]
-
      ;; combine the default handlers with the map provided
      {:handlers (merge (default-handlers)
                        handler-map
@@ -180,10 +179,11 @@
   "Returns a resource that halt processing and returns the specified
   status code."
   [status]
-  (resource [:halt status] nil))
+  (resource {"*/*" (fn [request] {:status status})}))
 
 (defn error-resource
   "Returns a resource that returns a 500 status and the provided term
   as the body."
   [term]
-  (resource [:error term] nil))
+  (resource {"*/*" (fn [request] {:status 500
+                                  :body term})}))
