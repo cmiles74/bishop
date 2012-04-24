@@ -12,8 +12,8 @@
   (:require [clojure.string :as string]))
 
 (def HTTP_DATE_FORMAT (doto
-                          (SimpleDateFormat. "EEE, dd MMM yyyy HH:mm:ss zzz"
-                                             Locale/US)
+                          (SimpleDateFormat.
+                           "EEE, dd MMM yyyy HH:mm:ss zzz" Locale/US)
                         (.setTimeZone (TimeZone/getTimeZone "UTC"))))
 
 (defn decide
@@ -228,11 +228,6 @@
            (if expires {"expires" (header-date expires)})
            (if modified {"last-modified" (header-date modified)}))))
 
-(defn merge-responses
-  [response-1 response-2]
-  (merge-with (fn [former latter])
-              response-1 response-2))
-
 (defn add-body
   "Calculates and appends the body to the provided request."
   [resource request response]
@@ -241,6 +236,8 @@
     ;; the resource contains a map of content types and return
     ;; values or functions
     (map? resource)
+
+    ;; get the responder function for our content type
     (let [responder (resource (:acceptable-type request))]
       (cond
 
@@ -260,21 +257,24 @@
                           [former latter]))
                       response (responder request)))
 
-        ;; merge the response
+        ;; merge bishop's response with the provided map
         (map? responder)
-        (do
-          (merge-with (fn [former latter]
-                        (cond
+        (merge-with (fn [former latter]
+                      (cond
 
-                          (and (map? former) (map? latter))
-                          (merge-with concat former latter)
+                        ;; maps are concatenated
+                        (and (map? former) (map? latter))
+                        (merge-with concat former latter)
 
-                          (nil? former)
-                          latter
+                        ;; nil values are over-written
+                        (nil? former)
+                        latter
 
-                          :else
-                          [former latter]))
-                      response responder))
+                        ;; all other values are combined into a
+                        ;; sequence
+                        :else
+                        [former latter]))
+                    response responder)
 
         ;; return the response value
         :else
@@ -289,11 +289,9 @@
   ;; present
   (if (= 200 code)
 
+    ;; don't add the response if we already have one
     (if (nil? (:body response))
-
-      ;; add the missing body and status code to the response
       (assoc (add-body (:response resource) request response) :status code)
-
       response)
 
     ;; we have an error response code
