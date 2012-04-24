@@ -11,7 +11,7 @@
            [org.apache.commons.lang.time DateUtils])
   (:require [clojure.string :as string]))
 
-(def HTTP_DATE_FORMAT (doto
+(def HTTP-DATE-FORMAT (doto
                           (SimpleDateFormat.
                            "EEE, dd MMM yyyy HH:mm:ss zzz" Locale/US)
                         (.setTimeZone (TimeZone/getTimeZone "UTC"))))
@@ -214,7 +214,7 @@
   "Returns a textual date in the correct format for use in an HTTP
   header."
   [date]
-  (.format HTTP_DATE_FORMAT date))
+  (.format HTTP-DATE-FORMAT date))
 
 (defn caching-headers
   "Returns a sequence with the appropriate caching headers for the
@@ -231,54 +231,62 @@
 (defn add-body
   "Calculates and appends the body to the provided request."
   [resource request response]
-  (cond
+  (if (nil? (:body response))
+      ;(not (some #(= :body %) response))
 
-    ;; the resource contains a map of content types and return
-    ;; values or functions
-    (map? resource)
 
-    ;; get the responder function for our content type
-    (let [responder (resource (:acceptable-type request))]
-      (cond
+    ;; get the body and add it to the response
+    (cond
 
-        ;; invoke the response function
-        (fn? responder)
-        (do
+      ;; the resource contains a map of content types and return
+      ;; values or functions
+      (map? resource)
+
+      ;; get the responder function for our content type
+      (let [responder (resource (:acceptable-type request))]
+        (cond
+
+          ;; invoke the response function
+          (fn? responder)
+          (do
+            (merge-with (fn [former latter]
+                          (cond
+
+                            (and (map? former) (map? latter))
+                            (merge-with concat former latter)
+
+                            (nil? former)
+                            latter
+
+                            :else
+                            [former latter]))
+                        response (responder request)))
+
+          ;; merge bishop's response with the provided map
+          (map? responder)
           (merge-with (fn [former latter]
                         (cond
 
+                          ;; maps are concatenated
                           (and (map? former) (map? latter))
                           (merge-with concat former latter)
 
+                          ;; nil values are over-written
                           (nil? former)
                           latter
 
+                          ;; all other values are combined into a
+                          ;; sequence
                           :else
                           [former latter]))
-                      response (responder request)))
+                      response responder)
 
-        ;; merge bishop's response with the provided map
-        (map? responder)
-        (merge-with (fn [former latter]
-                      (cond
+          ;; return the response value
+          :else
+          (assoc response :body responder))))
 
-                        ;; maps are concatenated
-                        (and (map? former) (map? latter))
-                        (merge-with concat former latter)
-
-                        ;; nil values are over-written
-                        (nil? former)
-                        latter
-
-                        ;; all other values are combined into a
-                        ;; sequence
-                        :else
-                        [former latter]))
-                    response responder)
-
-        ;; return the response value
-        :else
-        (assoc response :body responder)))))
+      ;; return the response as-is
+      response))
 
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
@@ -288,11 +296,7 @@
   ;; add the body to all 200 messages if the body isn't already
   ;; present
   (if (= 200 code)
-
-    ;; don't add the response if we already have one
-    (if (nil? (:body response))
-      (assoc (add-body (:response resource) request response) :status code)
-      response)
+    (assoc (add-body (:response resource) request response) :status code)
 
     ;; we have an error response code
     (assoc response
@@ -345,7 +349,7 @@
 
 (defn o14
   [resource request response state]
-  (if (apply-callback request resource :is_conflict?)
+  (if (apply-callback request resource :is-conflict?)
     (response-error 409 request response state :o14)
     #(p11 resource request response (assoc state :o14 false))))
 

@@ -32,7 +32,13 @@
    :expires (fn [request] nil)
    :content-types-provided (fn [request] ["text/html"])
    :multiple-representations (fn [request] false)
-   :is_conflict? (fn [request] false)
+   :is-conflict? (fn [request] false)
+   :post-is-create? (fn [request] false)
+   :base-uri (fn [request] nil)
+   :process-post (fn [request] nil)
+   :is-redirect? (fn [request] false)
+   :redirect (fn [request] nil)
+   :create-path (fn [request] nil)
 
    ;; default error handler
    :error (fn [code request response state])})

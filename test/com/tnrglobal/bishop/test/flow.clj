@@ -600,7 +600,7 @@
     (testing "O16 PUT Conflict"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:put])
-                           :is_conflict? (fn [request] true)})
+                           :is-conflict? (fn [request] true)})
             req (assoc test-request :request-method :put)]
         (let [response (run req res)]
           (is (= 409 (:status response))))))
