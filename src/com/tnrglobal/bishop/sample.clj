@@ -6,7 +6,8 @@
         [ring.middleware.reload]
         [ring.middleware.params]
         [ring.middleware.stacktrace])
-  (:require [com.tnrglobal.bishop.core :as bishop])
+  (:require [com.tnrglobal.bishop.core :as bishop]
+            [ring.util.response :as ring-utils])
   (:import [java.util Date]))
 
 ;; defines a resource that says hello
@@ -35,10 +36,8 @@
   {["hello" :name]  hello ;; sample hello world handler
 
    ;; a resource that returns a static value
-   ["static"] (bishop/resource {"text/html" {:body (str "<html><body><p>"
-                                                        "This is a static "
-                                                        "response.</p>"
-                                                        "</body></html>")}
+   ["static"] (bishop/resource {"text/html" (ring-utils/response
+                                             "This is a static response.")
                                 "text/xml" {:body (str "<message><text>This"
                                                        " is a static "
                                                        "response.</text>"
