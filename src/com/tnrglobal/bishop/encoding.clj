@@ -3,7 +3,7 @@
 ;;
 (ns com.tnrglobal.bishop.encoding)
 
-(defn identity
+(defn identity-enc
   "Provides a pass-through identity encoding. The content is unchanged."
   [response]
   response)

@@ -24,7 +24,7 @@
    :options (fn [request] {})
    :languages-provided (fn [reqeust] [])
    :charsets-provided (fn [request] [])
-   :encodings-provided (fn [request] {"identity" encoding/identity})
+   :encodings-provided (fn [request] {"identity" encoding/identity-enc})
    :variances (fn [request] [])
    :generate-etag (fn [request] nil)
    :last-modified (fn [request] nil)
