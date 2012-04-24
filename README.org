@@ -101,3 +101,13 @@ compliant services.
     resource that we do not provide.
 
   And so on.
+
+* Sample Application
+
+  I have put a small, [[https://github.com/tnr-global/bishop-sample][fairly poor sample application]] together to make
+  sure that the library builds and mostly functions. If you’re
+  interested, you are welcome to take a look at it.
+
+  #+BEGIN_EXAMPLE
+  https://github.com/tnr-global/bishop-sample
+  #+END_EXAMPLE
