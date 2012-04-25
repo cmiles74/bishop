@@ -704,7 +704,7 @@
         (let [response (run req res)]
           (is (= 410 (:status response))))))
 
-    (testing "N5, Post to Missing Resource, Not Allowed"
+    (testing "N5, POST to Missing Resource, Not Allowed"
       (let [res (resource {"text/html" (fn [request] {:body "testing"})}
                           {:allowed-methods (fn [request] [:post])
                            :allow-missing-post? (fn [request] false)
@@ -714,7 +714,7 @@
         (let [response (run req res)]
           (is (= 410 (:status response))))))
 
-    (testing "I4, Post to Moved Permanently"
+    (testing "I4, PUT to Moved Permanently"
       (let [res (resource {"text/html" (fn [request] {:body "testing"})}
                           {:allowed-methods (fn [request] [:put])
                            :resource-exists? (fn [request] false)
@@ -722,4 +722,12 @@
             req (assoc test-request :request-method :put)]
         (let [response (run req res)]
           (is (= 301 (:status response))))))
-  )
+
+    (testing "P3, PUT, Conflict"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:allowed-methods (fn [request] [:put])
+                           :resource-exists? (fn [request] false)
+                           :is-conflict? (fn [request] true)})
+            req (assoc test-request :request-method :put)]
+        (let [response (run req res)]
+          (is (= 409 (:status response)))))))

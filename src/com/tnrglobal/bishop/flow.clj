@@ -285,12 +285,6 @@
 
 ;; states
 
-;;(response-ok request response state :b11)
-
-(defn p3
-  [resource request response state]
-  (response-ok request response state :p3))
-
 (defn o18b
   [resource request response state]
   (if (apply-callback request resource :multiple-representations)
@@ -332,6 +326,12 @@
     (if (not (some #(= "location" %) (keys (:headers response-out))))
       #(o20 resource request response-out (assoc state :p11 true))
       (response-code 201 request response-out state :p11))))
+
+(defn p3
+  [resource request response state]
+  (if (apply-callback request resource :is-conflict?)
+    (response-code 409 request response state :p3)
+    #(p11 resource request response (assoc state :p3 false))))
 
 (defn o14
   [resource request response state]
