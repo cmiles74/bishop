@@ -713,4 +713,13 @@
             req (assoc test-request :request-method :post)]
         (let [response (run req res)]
           (is (= 410 (:status response))))))
+
+    (testing "I4, Post to Moved Permanently"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:allowed-methods (fn [request] [:put])
+                           :resource-exists? (fn [request] false)
+                           :moved-permanently? (fn [request] "/testing/29292")})
+            req (assoc test-request :request-method :put)]
+        (let [response (run req res)]
+          (is (= 301 (:status response))))))
   )

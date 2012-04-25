@@ -287,6 +287,10 @@
 
 ;;(response-ok request response state :b11)
 
+(defn p3
+  [resource request response state]
+  (response-ok request response state :p3))
+
 (defn o18b
   [resource request response state]
   (if (apply-callback request resource :multiple-representations)
@@ -521,7 +525,15 @@
 
 (defn i4
   [resource request response state]
-  (response-ok request response state :i4))
+  (let [moved-perm (apply-callback request resource :moved-permanently?)]
+    (if moved-perm
+      (response-code 301
+                     request
+                     (assoc response :headers
+                            (assoc (:headers response)
+                              "location" moved-perm))
+                     state :i4)
+      #(p3 resource request response (assoc state :i4 false)))))
 
 (defn i7
   [resource request response state]
