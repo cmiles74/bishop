@@ -11,6 +11,7 @@
            [org.apache.commons.lang.time DateUtils])
   (:require [clojure.string :as string]))
 
+;; date format to use when outputting headers
 (def HTTP-DATE-FORMAT (doto
                           (SimpleDateFormat.
                            "EEE, dd MMM yyyy HH:mm:ss zzz" Locale/US)
@@ -42,15 +43,51 @@
   [request resource callback]
   ((callback (:handlers resource)) request))
 
+;; utility methods
+
+(defn key-to-upstring
+  "Returns a String containing the uppercase name of the provided
+  key."
+  [key]
+  (.toUpperCase (name key)))
+
+(defn string-to-titlecase
+  "Capitalizes the first letter in the provided text."
+  [text]
+  (apply str (cons (.toUpperCase (str (first text))) (rest text))))
+
+(defn header-to-titlecase
+  "Splits the provided String into a sequence and title-cases eeach
+  item, then recombines these Strings into one hyphen delimited
+  String."
+  [header]
+  (apply str (interpose "-"
+                        (map string-to-titlecase (string/split header #"-")))))
+
+(defn headers-to-titlecase
+  "Accepts a map and returns a new map where the keys have been
+  converted to Strings in title case. The keys of the map should be
+  hyphenated (as HTTP headers are), each word after a hyphen will be
+  title-cased."
+  [headers]
+  (apply merge (map (fn [item]
+         {(header-to-titlecase (name (first item))) (second item)})
+       headers)))
+
+(defn list-keys-to-upstring
+  "Returns a comma separated list of upper-case Strings, each one the
+  name of one of the provided keys."
+  [keys]
+  (apply str (interpose ", " (for [key keys] (key-to-upstring key)))))
+
 (defn return-code
   "Returns a function that returns a sequence including the response
   code, the request, the response (with the status correctly set to
   the provided code) and a map of state data representing the decision
   flow. This function represents the end of the run."
   [code request response state]
-  [code request (assoc response :status code) state])
-
-;; utility methods
+  [code request (assoc (assoc response :status code)
+                  :headers (headers-to-titlecase (:headers response))) state])
 
 (defn response-ok
   "Returns a function that will return a 200 response code and add the
@@ -63,18 +100,6 @@
   provide node (a keyword) to the state."
   [code request response state node]
   #(return-code code request response (assoc state node false)))
-
-(defn key-to-upstring
-  "Returns a String containing the uppercase name of the provided
-  key."
-  [key]
-  (.toUpperCase (name key)))
-
-(defn list-keys-to-upstring
-  "Returns a comma separated list of upper-case Strings, each one the
-  name of one of the provided keys."
-  [keys]
-  (apply str (interpose ", " (for [key keys] (key-to-upstring key)))))
 
 (defn header-value
   "Returns the value for the specified request header."
@@ -765,7 +790,7 @@
       (instance? String result)
       #(b7 resource request
            (assoc-in response
-                     [:headers "www-authenticate"]
+                     [:headers "WWW-Authenticate"]
                      result)
            (assoc state :b8 result))
 
@@ -826,7 +851,7 @@
           #(b9 resource request response (assoc state :b10 true))
           (response-code
            405 request
-           (assoc-in response [:headers "allow"]
+           (assoc-in response [:headers "Allow"]
                      (list-keys-to-upstring
                       (apply-callback request resource :allowed-methods)))
            state :b10)))

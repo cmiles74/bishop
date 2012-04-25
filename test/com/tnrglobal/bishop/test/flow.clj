@@ -75,7 +75,7 @@
       (let [res-out (run req res)]
         (is (and (= 405 (:status res-out))
                  (some (fn [[head val]]
-                         (= "allow" head)) (:headers res-out))) "Method not allowed"))))
+                         (= "Allow" head)) (:headers res-out))) "Method not allowed"))))
 
   (testing "B10 Valid"
     (let [res (resource {"text/html" "testing"})
@@ -125,7 +125,7 @@
             response (run req res)]
         (is (and (= 200 (:status response))
                  (some (fn [[head value]]
-                         (and (= "www-authenticate" head)
+                         (and (= "WWW-Authenticate" head)
                               (= "Basic" value)))
                        (:headers response))) "Authenticate")))
 
@@ -194,7 +194,7 @@
                            :options (fn [request] {"allow" "GET, HEAD, OPTIONS"})})
             req (assoc test-request :request-method :options)]
         (is (some (fn [[header value]]
-                    (= "allow" header))
+                    (= "Allow" header))
                   (:headers (run req res))) "Request entity too large")))
 
     ;; acceptable content type?
@@ -353,7 +353,7 @@
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
-                   (= "accept" ((:headers response) "vary")))))))
+                   (= "accept" ((:headers response) "Vary")))))))
 
     (testing "G7 Header"
       (let [res (resource {"text/html" "testing"})
@@ -366,7 +366,7 @@
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= "accept-encoding, accept-charset, accept-language, accept"
-                      ((:headers response) "vary")))))))
+                      ((:headers response) "Vary")))))))
 
     ;; if-match etag
 
