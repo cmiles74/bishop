@@ -386,7 +386,10 @@
 
 (defn n5
   [resource request response state]
-  (response-ok request response state :n5))
+  (decide #(apply-callback request resource :allow-missing-post?)
+          true
+          #(n11 resource request response (assoc state :n5 true))
+          (response-code 410 request response state :n5)))
 
 (defn m20
   [resource request response state]

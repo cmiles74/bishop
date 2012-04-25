@@ -703,4 +703,14 @@
             req test-request]
         (let [response (run req res)]
           (is (= 410 (:status response))))))
+
+    (testing "N5, Post to Missing Resource, Not Allowed"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:allowed-methods (fn [request] [:post])
+                           :allow-missing-post? (fn [request] false)
+                           :resource-exists? (fn [request] false)
+                           :previously-existed? (fn [request] true)})
+            req (assoc test-request :request-method :post)]
+        (let [response (run req res)]
+          (is (= 410 (:status response))))))
   )
