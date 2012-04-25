@@ -40,4 +40,5 @@
    :redirect (fn [request] nil)
    :create-path (fn [request] false)
    :previously-existed? (fn [request] false)
-   :allow-missing-post? (fn [request] false)})
+   :allow-missing-post? (fn [request] false)
+   :moved-permanently? (fn [request] false)})

@@ -443,6 +443,10 @@
     #(m7 resource request response (assoc state :l7 true))
     (response-code 404 request response state :l7)))
 
+(defn l5
+  [resource request response state]
+  (response-ok request response state :l5))
+
 (defn j18
   [resource request response state]
   (if (or (= :get (:request-method request))
@@ -463,7 +467,15 @@
 
 (defn k5
   [resource request response state]
-  (response-ok request response state :k5))
+  (let [moved-permanently (apply-callback request resource :moved-permanently?)]
+    (if moved-permanently
+      (response-code 301
+                     request
+                     (assoc response :headers
+                            (assoc (:headers response)
+                              "location" moved-permanently))
+                     state :k5)
+      #(l5 resource request response (assoc state :k5 false)))))
 
 (defn k7
   [resource request response state]

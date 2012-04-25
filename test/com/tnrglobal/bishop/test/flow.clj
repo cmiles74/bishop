@@ -676,6 +676,14 @@
                            :process-post (fn [request] true)})
             req (assoc test-request :request-method :post)]
         (let [response (run req res)]
-          (println response)
           (is (= 200 (:status response))))))
+
+    (testing "K5, Moved Permanently"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:resource-exists? (fn [request] false)
+                           :previously-existed? (fn [request] true)
+                           :moved-permanently? (fn [request] "/testing/29292")})
+            req test-request]
+        (let [response (run req res)]
+          (is (= 301 (:status response))))))
   )
