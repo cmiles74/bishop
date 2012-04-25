@@ -58,9 +58,9 @@
   [request response state node]
   #(return-code 200 request response (assoc state node true)))
 
-(defn response-error
-  "Returns a function that will return an error response code and add
-  the provide node (a keyword) to the state."
+(defn response-code
+  "Returns a function that will return a response code and add the
+  provide node (a keyword) to the state."
   [code request response state node]
   #(return-code code request response (assoc state node false)))
 
@@ -278,18 +278,10 @@
 
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
-  returns the final response map for the request."
+  returns the final response map for the request. If the body isn't
+  yet attached it will be attached here."
   [[code request response state] resource]
-
-  ;; add the body to all 200 messages if the body isn't already
-  ;; present
-  (if (= 200 code)
-    (assoc (add-body (:response resource) request response) :status code)
-
-    ;; we have an error response code
-    (assoc response
-      :body (apply str (:body response)
-             ((:error (:handlers resource)) code request response state)))))
+  (assoc (add-body (:response resource) request response) :status code))
 
 ;; states
 
@@ -298,7 +290,7 @@
 (defn o18b
   [resource request response state]
   (if (apply-callback request resource :multiple-representations)
-    (response-error 300 request response state :o18b)
+    (response-code 300 request response state :o18b)
     (response-ok request response state :o18b)))
 
 
@@ -315,7 +307,7 @@
 
       ;; the reponse indicates a specific status code, bail now
       (if (:status response-out)
-        (response-error (:status response-out) request response-out state :o18)
+        (response-code (:status response-out) request response-out state :o18)
 
         ;; processing continues normally
         #(o18b resource request response-out (assoc state :o18 true))))
@@ -325,7 +317,7 @@
 (defn o20
   [resource request response state]
   (if (nil? (:body response))
-    (response-error 204 request response state :o20)
+    (response-code 204 request response state :o20)
     #(o18 resource request response (assoc state :o20 false))))
 
 (defn p11
@@ -334,12 +326,12 @@
   (let [response-out (add-body (:response resource) request response)]
     (if (not (some #(= "location" %) (keys (:headers response-out))))
       #(o20 resource request response-out (assoc state :p11 true))
-      (response-error 201 request response-out state :p11))))
+      (response-code 201 request response-out state :p11))))
 
 (defn o14
   [resource request response state]
   (if (apply-callback request resource :is-conflict?)
-    (response-error 409 request response state :o14)
+    (response-code 409 request response state :o14)
     #(p11 resource request response (assoc state :o14 false))))
 
 (defn o16
@@ -361,7 +353,7 @@
 
           ;; redirect to the create path
           (let [url (str (:uri request) "/" create-path)]
-            #(response-error 303
+            #(response-code 303
                              request
                              (assoc response :headers
                                     (assoc (:headers response)
@@ -376,7 +368,7 @@
 
           ;; status code returned
           (number? process-post)
-          (response-error process-post request response state :n11)
+          (response-code process-post request response state :n11)
 
           (= false process-post)
           (throw (Exception. (str "Process post invalid")))
@@ -395,7 +387,7 @@
   (let [delete-resource (apply-callback request resource :delete-resource)]
     (if delete-resource
       #(o20 resource request response (assoc state :m20 true))
-      (response-error 202 request response state :n16))))
+      (response-code 202 request response state :n16))))
 
 (defn m16
   [resource request response state]
@@ -409,7 +401,7 @@
         if-modified-since (:if-modified-since request)]
     (if (> (.getTime last-modified)
            (.getTime if-modified-since))
-      (response-error 304 request response state :l17)
+      (response-code 304 request response state :l17)
       #(m16 resource request response (assoc state :l17 false)))))
 
 (defn l15
@@ -441,8 +433,8 @@
   [resource request response state]
   (if (or (= :get (:request-method request))
           (= :head (:request-method request)))
-    (response-error 304 request response state :j18)
-    (response-error 412 request response state :j18)))
+    (response-code 304 request response state :j18)
+    (response-code 412 request response state :j18)))
 
 (defn k13
   [resource request response state]
@@ -480,7 +472,7 @@
                                            (:headers request)))]
     (if (and last-modified (> (.getTime if-unmodified-since)
                               (.getTime last-modified)))
-      (response-error 412 request response state :h12)
+      (response-code 412 request response state :h12)
       #(i12 resource request response (assoc state :h12 false)))))
 
 (defn h11
@@ -504,7 +496,7 @@
   [resource request response state]
   (let [if-match-value (header-value "if-match" (:headers request))]
     (if (= "*" (make-unquoted if-match-value))
-      (response-error 412 request response state :h7)
+      (response-code 412 request response state :h7)
       #(i7 resource request response (assoc state :h7 false)))))
 
 (defn g11
@@ -516,7 +508,7 @@
         etag (apply-callback request resource :generate-etag)]
     (if (some #(= etag %) if-match-etags)
       #(h10 resource request response (assoc state :g11 true))
-      (response-error 412 request response state :g11))))
+      (response-code 412 request response state :g11))))
 
 (defn g9
   [resource request response state]
@@ -555,7 +547,7 @@
                  (some #(= acceptable (.toLowerCase %))
                        (keys (apply-callback request resource :encodings-provided)))))
       #(g7 resource request response (assoc state :f7 true))
-      (response-error 406 request response state :f7))))
+      (response-code 406 request response state :f7))))
 
 (defn f6
   [resource request response state]
@@ -572,7 +564,7 @@
              (assoc request :acceptable-encoding acceptable)
              response
              (assoc state :f6 true))
-        (response-error 406 request response state :f6)))
+        (response-code 406 request response state :f6)))
     #(g7 resource request response (assoc state :f6 false))))
 
 (defn e6
@@ -582,7 +574,7 @@
                  (some #(= acceptable (.toLowerCase %))
                        (apply-callback request resource :charsets-provided))))
       #(f6 resource request response (assoc state :e6 true))
-      (response-error 406 request response state :e6))))
+      (response-code 406 request response state :e6))))
 
 (defn e5
   [resource request response state]
@@ -599,7 +591,7 @@
              (assoc request :acceptable-charset acceptable)
              response
              (assoc state :e5 true))
-        (response-error 406 request response state :e5)))
+        (response-code 406 request response state :e5)))
     #(f6 resource request response (assoc state :e5 false))))
 
 (defn d5
@@ -609,7 +601,7 @@
                  (some #(= acceptable (.toLowerCase %))
                        (apply-callback request resource :languages-provided))))
       #(e5 resource request response (assoc state :d5 true))
-      (response-error 406 request response state :d5))))
+      (response-code 406 request response state :d5))))
 
 (defn d4
   [resource request response state]
@@ -626,7 +618,7 @@
              (assoc request :acceptable-language acceptable)
              response
              (assoc state :d4 true))
-        (response-error 406 request response state :d4)))
+        (response-code 406 request response state :d4)))
     #(e5 resource request response (assoc state :d4 false))))
 
 (defn c4
@@ -638,7 +630,7 @@
            (assoc request :acceptable-type acceptable)
            response
            (assoc state :c4 true))
-      (response-error 406 request response state :c4))))
+      (response-code 406 request response state :c4))))
 
 (defn c3
   [resource request response state]
@@ -661,27 +653,27 @@
   (decide #(apply-callback request resource :valid-entity-length?)
           true
           #(b3 resource request response (assoc state :b4 true))
-          (response-error 413 request response state :b4)))
+          (response-code 413 request response state :b4)))
 
 (defn b5
   [resource request response state]
   (decide #(apply-callback request resource :known-content-type?)
           true
           #(b4 resource request response (assoc state :b5 true))
-          (response-error 415 request response state :b5)))
+          (response-code 415 request response state :b5)))
 
 (defn b6
   [resource request response state]
   (decide #(apply-callback request resource :valid-content-headers?)
           true
           #(b5 resource request response (assoc state :b6 true))
-          (response-error 501 request response state :b6)))
+          (response-code 501 request response state :b6)))
 
 (defn b7
   [resource request response state]
   (decide #(apply-callback request resource :forbidden?)
           true
-          (response-error 403 request response state :b7)
+          (response-code 403 request response state :b7)
           #(b6 resource request response (assoc state :b6 true))))
 
 (defn b8
@@ -700,13 +692,13 @@
            (assoc state :b8 result))
 
       :else
-      (response-error 401 request response state :b8))))
+      (response-code 401 request response state :b8))))
 
 (defn b9b
   [resource request response state]
   (decide #(apply-callback request resource :malformed-request?)
           true
-          (response-error 400 request response state :b9b)
+          (response-code 400 request response state :b9b)
           #(b8 resource request response (assoc state :b9b false))))
 
 (defn b9a
@@ -727,13 +719,13 @@
 
         #(b9b resource request response (assoc state :b9a true))
 
-        (response-error 400 request
+        (response-code 400 request
                         (assoc response :body
                                "Content-MD5 header does not match request body")
                         state :b9a))
 
       :else
-      (response-error 400 request
+      (response-code 400 request
                       (assoc :body response
                              "Content-MD5 header does not match request body")
                       state :b9a))))
@@ -754,7 +746,7 @@
                  (apply-callback request resource :allowed-methods))
           true
           #(b9 resource request response (assoc state :b10 true))
-          (response-error
+          (response-code
            405 request
            (assoc-in response [:headers "allow"]
                      (list-keys-to-upstring
@@ -765,7 +757,7 @@
   [resource request response state]
   (decide #(apply-callback request resource :uri-too-long?)
           true
-          (response-error 414 request response state :b11)
+          (response-code 414 request response state :b11)
           #(b10 resource request response (assoc state :b11 false))))
 
 (defn b12
@@ -775,7 +767,7 @@
                  (apply-callback request resource :known-methods))
           true
           #(b11 resource request response (assoc state :b12 true))
-          (response-error 501 request response state :b12)))
+          (response-code 501 request response state :b12)))
 
 (defn b13
   "Is the resource available?"
@@ -783,7 +775,7 @@
   (decide #(apply-callback request resource :service-available?)
           true
           #(b12 resource request response (assoc state :b13 true))
-          #(response-error 503 request response state :b13)))
+          #(response-code 503 request response state :b13)))
 
 (defn start
   "This function is the first stage in our processing tree. It will
