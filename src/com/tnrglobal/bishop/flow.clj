@@ -228,12 +228,29 @@
            (if expires {"expires" (header-date expires)})
            (if modified {"last-modified" (header-date modified)}))))
 
+(defn merge-responses
+  "Merges two responses into once complete response. Maps are merged
+  into large maps, nil values are replaced with non-nil values and all
+  other values are combined into a sequence."
+  [response-1 response-2]
+  (merge-with (fn [former latter]
+                (cond
+
+                  (and (map? former) (map? latter))
+                  (merge former latter)
+
+                  (nil? former)
+                  latter
+
+                  :else
+                  latter))
+              response-1 response-2))
+
 (defn add-body
   "Calculates and appends the body to the provided request."
   [resource request response]
   (if (nil? (:body response))
       ;(not (some #(= :body %) response))
-
 
     ;; get the body and add it to the response
     (cond
@@ -241,45 +258,16 @@
       ;; the resource contains a map of content types and return
       ;; values or functions
       (map? resource)
-
-      ;; get the responder function for our content type
       (let [responder (resource (:acceptable-type request))]
         (cond
 
           ;; invoke the response function
           (fn? responder)
-          (do
-            (merge-with (fn [former latter]
-                          (cond
-
-                            (and (map? former) (map? latter))
-                            (merge-with concat former latter)
-
-                            (nil? former)
-                            latter
-
-                            :else
-                            [former latter]))
-                        response (responder request)))
+          (merge-responses response (responder request))
 
           ;; merge bishop's response with the provided map
           (map? responder)
-          (merge-with (fn [former latter]
-                        (cond
-
-                          ;; maps are concatenated
-                          (and (map? former) (map? latter))
-                          (merge-with concat former latter)
-
-                          ;; nil values are over-written
-                          (nil? former)
-                          latter
-
-                          ;; all other values are combined into a
-                          ;; sequence
-                          :else
-                          [former latter]))
-                      response responder)
+          (merge-responses response responder)
 
           ;; return the response value
           :else
@@ -300,7 +288,7 @@
 
     ;; we have an error response code
     (assoc response
-      :body (concat (:body response)
+      :body (apply str (:body response)
              ((:error (:handlers resource)) code request response state)))))
 
 ;; states
@@ -321,8 +309,9 @@
 
     ;; add our caching headers and the response body to the response
     (let [headers (caching-headers resource request response)
-          response-out (assoc (add-body (:response resource) request response)
-                         :headers (merge (:header response) headers))]
+          response-out (assoc
+                        (add-body (:response resource) request response)
+                        :headers headers)]
 
       ;; the reponse indicates a specific status code, bail now
       (if (:status response-out)
@@ -361,7 +350,39 @@
 
 (defn n11
   [resource request response state]
-  (response-ok request response state :n11))
+  (let [create (apply-callback request resource :post-is-create?)]
+    (cond
+
+      ;; yep, we're creating!
+      create
+      (let [create-path (apply-callback request resource :create-path)]
+        (if (nil? create-path)
+          (throw (Exception. (str "Invalid resource, no create-path")))
+
+          ;; redirect to the create path
+          (let [url (str (:uri request) "/" create-path)]
+            #(response-error 303
+                             request
+                             (assoc response :headers
+                                    (assoc (:headers response)
+                                      "location" url))
+                             state
+                             :n11))))
+
+      ;; not a create
+      (= false create)
+      (let [process-post (apply-callback request resource :process-post)]
+        (cond
+
+          ;; status code returned
+          (number? process-post)
+          (response-error process-post request response state :n11)
+
+          (= false process-post)
+          (throw (Exception. (str "Process post invalid")))
+
+          :else
+          #(p11 resource request response (assoc state :n11 false)))))))
 
 (defn n16
   [resource request response state]

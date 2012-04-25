@@ -38,7 +38,7 @@
    :process-post (fn [request] nil)
    :is-redirect? (fn [request] false)
    :redirect (fn [request] nil)
-   :create-path (fn [request] nil)
+   :create-path (fn [request] false)
 
    ;; default error handler
    :error (fn [code request response state])})

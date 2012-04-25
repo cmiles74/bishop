@@ -621,4 +621,35 @@
             req (assoc test-request :request-method :put)]
         (let [response (run req res)]
           (is (= 200 (:status response))))))
+
+    (testing "N11, Post is Create"
+      (let [res (resource {"text/html" (fn [request]
+                                         {:body "testing"})}
+                          {:allowed-methods (fn [request] [:post])
+                           :post-is-create? (fn [request] true)
+                           :create-path (fn [request] "/testing/new")})
+            req (assoc test-request :request-method :post)]
+        (let [response (run req res)]
+          (is (= 303 (:status response))))))
+
+    (testing "N11, Post is Not Create, 'Location' Header"
+      (let [res (resource {"text/html" (fn [request]
+                                         {:body "testing for realz"
+                                          :headers {"location" "/testing/21"}})}
+                          {:allowed-methods (fn [request] [:post])
+                           :post-is-create? (fn [request] false)
+                           :process-post (fn [request] true)})
+            req (assoc test-request :request-method :post)]
+        (let [response (run req res)]
+          (is (= 201 (:status response))))))
+
+    (testing "N11, Post is Not Create"
+      (let [res (resource {"text/html" (fn [request]
+                                         {:body "testing"})}
+                          {:allowed-methods (fn [request] [:post])
+                           :post-is-create? (fn [request] false)
+                           :process-post (fn [request] true)})
+            req (assoc test-request :request-method :post)]
+        (let [response (run req res)]
+          (is (= 200 (:status response))))))
   )
