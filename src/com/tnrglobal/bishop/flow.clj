@@ -384,6 +384,10 @@
     #(n11 resource request response (assoc state :n16 true))
     #(o16 resource request response (assoc state :n16 false))))
 
+(defn n5
+  [resource request response state]
+  (response-ok request response state :n5))
+
 (defn m20
   [resource request response state]
   (let [delete-resource (apply-callback request resource :delete-resource)]
@@ -406,7 +410,9 @@
 
 (defn m5
   [resource request response state]
-  (response-ok request response state :m5))
+  (if (= :post (:request-method request))
+    #(n5 resource request response (assoc state :m5 true))
+    (response-code 410 resource request response :m5)))
 
 (defn l17
   [resource request response state]

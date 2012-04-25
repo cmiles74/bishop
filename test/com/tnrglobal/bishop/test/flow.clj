@@ -695,4 +695,12 @@
             req test-request]
         (let [response (run req res)]
           (is (= 307 (:status response))))))
+
+    (testing "M5, Gone"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:resource-exists? (fn [request] false)
+                           :previously-existed? (fn [request] true)})
+            req test-request]
+        (let [response (run req res)]
+          (is (= 410 (:status response))))))
   )
