@@ -686,4 +686,13 @@
             req test-request]
         (let [response (run req res)]
           (is (= 301 (:status response))))))
+
+    (testing "L5, Moved Temporarily"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:resource-exists? (fn [request] false)
+                           :previously-existed? (fn [request] true)
+                           :moved-temporarily? (fn [request] "/testing/29292")})
+            req test-request]
+        (let [response (run req res)]
+          (is (= 307 (:status response))))))
   )

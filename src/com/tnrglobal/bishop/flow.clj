@@ -322,7 +322,8 @@
 
 (defn p11
   [resource request response state]
-  ;; TODO: Should we add the body here?
+  ;; TODO: Should we add the body here? I don't see any other way to
+  ;; handle PUT transactions.
   (let [response-out (add-body (:response resource) request response)]
     (if (not (some #(= "location" %) (keys (:headers response-out))))
       #(o20 resource request response-out (assoc state :p11 true))
@@ -338,7 +339,7 @@
   [resource request response state]
   (if (= :put (:request-method request))
     #(o14 resource request response (assoc state :o16 true))
-    #(o18 resource request response (assoc state :016 false))))
+    #(o18 resource request response (assoc state :o16 false))))
 
 (defn n11
   [resource request response state]
@@ -403,6 +404,10 @@
           #(n11 resource request response (assoc state :m7 true))
           (response-code 404 request response state :m7)))
 
+(defn m5
+  [resource request response state]
+  (response-ok request response state :m5))
+
 (defn l17
   [resource request response state]
   (let [last-modified (apply-callback request resource :last-modified)
@@ -445,7 +450,15 @@
 
 (defn l5
   [resource request response state]
-  (response-ok request response state :l5))
+  (let [moved-temp (apply-callback request resource :moved-temporarily?)]
+    (if moved-temp
+      (response-code 307
+                     request
+                     (assoc response :headers
+                            (assoc (:headers response)
+                              "location" moved-temp))
+                     state :l5)
+      #(m5 resource request response (assoc state :l5 false)))))
 
 (defn j18
   [resource request response state]

@@ -41,4 +41,5 @@
    :create-path (fn [request] false)
    :previously-existed? (fn [request] false)
    :allow-missing-post? (fn [request] false)
-   :moved-permanently? (fn [request] false)})
+   :moved-permanently? (fn [request] false)
+   :moved-temporarily? (fn [request] false)})
