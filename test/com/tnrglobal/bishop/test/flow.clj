@@ -652,4 +652,30 @@
             req (assoc test-request :request-method :post)]
         (let [response (run req res)]
           (is (= 200 (:status response))))))
+
+    (testing "L7, Not Post"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:resource-exists? (fn [request] false)})
+            req test-request]
+        (let [response (run req res)]
+          (is (= 404 (:status response))))))
+
+    (testing "M7, Post to Missing Resource, Not Allowed"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:resource-exists? (fn [request] false)
+                           :allowed-methods (fn [request] [:post])})
+            req (assoc test-request :request-method :post)]
+        (let [response (run req res)]
+          (is (= 404 (:status response))))))
+
+    (testing "M7, Post to Missing Resource, Allowed"
+      (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                          {:resource-exists? (fn [request] false)
+                           :allowed-methods (fn [request] [:post])
+                           :allow-missing-post? (fn [request] true)
+                           :process-post (fn [request] true)})
+            req (assoc test-request :request-method :post)]
+        (let [response (run req res)]
+          (println response)
+          (is (= 200 (:status response))))))
   )

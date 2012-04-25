@@ -38,4 +38,6 @@
    :process-post (fn [request] nil)
    :is-redirect? (fn [request] false)
    :redirect (fn [request] nil)
-   :create-path (fn [request] false)})
+   :create-path (fn [request] false)
+   :previously-existed? (fn [request] false)
+   :allow-missing-post? (fn [request] false)})

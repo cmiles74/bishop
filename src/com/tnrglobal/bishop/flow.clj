@@ -370,7 +370,8 @@
           (number? process-post)
           (response-code process-post request response state :n11)
 
-          (= false process-post)
+          (or (nil? process-post)
+              (= false process-post))
           (throw (Exception. (str "Process post invalid")))
 
           :else
@@ -394,6 +395,13 @@
   (if (= :delete (:request-method request))
     #(m20 resource request response (assoc state :m16 true))
     #(n16 resource request response (assoc state :m16 false))))
+
+(defn m7
+  [resource request response state]
+  (decide #(apply-callback request resource :allow-missing-post?)
+          true
+          #(n11 resource request response (assoc state :m7 true))
+          (response-code 404 request response state :m7)))
 
 (defn l17
   [resource request response state]
@@ -429,6 +437,12 @@
     #(l14 resource request response (assoc state :l13 true))
     #(m16 resource request response (assoc state :l13 false))))
 
+(defn l7
+  [resource request response state]
+  (if (= :post (:request-method request))
+    #(m7 resource request response (assoc state :l7 true))
+    (response-code 404 request response state :l7)))
+
 (defn j18
   [resource request response state]
   (if (or (= :get (:request-method request))
@@ -447,6 +461,17 @@
       #(j18 resource request response (assoc state :k13 true))
       #(l13 resource request response (assoc state :k13 false)))))
 
+(defn k5
+  [resource request response state]
+  (response-ok request response state :k5))
+
+(defn k7
+  [resource request response state]
+  (decide #(apply-callback request resource :previously-existed?)
+          true
+          #(k5 resource request response (assoc state :k7 true))
+          #(l7 resource request response (assoc state :k7 false))))
+
 (defn i13
   [resource request response state]
   (let [if-none-match-value (header-value "if-none-match" (:headers request))]
@@ -460,9 +485,15 @@
     #(i13 resource request response (assoc state :i12 true))
     #(l13 resource request response (assoc state :i12 false))))
 
+(defn i4
+  [resource request response state]
+  (response-ok request response state :i4))
+
 (defn i7
   [resource request response state]
-  (response-ok request response state :i7))
+  (if (= :put (:request-method request))
+    #(i4 resource request response (assoc state :17 true))
+    #(k7 resource request response (assoc state :i7 false))))
 
 (defn h12
   [resource request response state]
@@ -495,7 +526,8 @@
 (defn h7
   [resource request response state]
   (let [if-match-value (header-value "if-match" (:headers request))]
-    (if (= "*" (make-unquoted if-match-value))
+    (if (and if-match-value
+             (= "*" (make-unquoted if-match-value)))
       (response-code 412 request response state :h7)
       #(i7 resource request response (assoc state :h7 false)))))
 
