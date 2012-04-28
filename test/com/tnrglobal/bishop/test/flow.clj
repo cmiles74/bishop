@@ -254,11 +254,11 @@
         (is (and (= 200 (:status response))
                  (= "en" (:body response)))))))
 
-  #_    (testing "D5 Invalid"
-          (let [res (resource {"text/html" "testing"})
-                req (assoc-in test-request [:headers "accept-language"]
-                              "da,en;q=0.8")]
-            (is (= 406 (:status (run req res))) "Not Acceptable")))
+  (testing "D5 Not Available"
+    (let [res (resource {"text/html" "testing"})
+          req (assoc-in test-request [:headers "accept-language"]
+                        "da;q=0.8")]
+      (is (= 406 (:status (run req res))) "Not Acceptable")))
 
   ;; acceptable charset?
 
