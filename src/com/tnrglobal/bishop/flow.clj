@@ -3,7 +3,8 @@
 ;; tree.
 ;;
 (ns com.tnrglobal.bishop.flow
-  (:use [clojure.java.io])
+  (:use [clojure.java.io]
+        [clojure.set])
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
            [java.util Date Locale TimeZone]
@@ -163,8 +164,8 @@
   [type-map]
   (if type-map
     (if (:minor type-map)
-      (.toLowerCase (apply str (interpose "/" (vals type-map))))
-      (first (vals type-map)))))
+      (.toLowerCase (apply str (interpose "/" [(:major type-map) (:minor type-map)])))
+      (:major type-map))))
 
 (defn acceptable-type
   "Compares the provided accept-header against a sequence of
@@ -645,29 +646,32 @@
 
 (defn f7
   [resource request response state]
-  (let [acceptable (:acceptable-encoding request)]
-    (if (and (or (= "*" acceptable)
-                 (some #(= acceptable (.toLowerCase %))
-                       (keys (apply-callback request resource :encodings-provided)))))
-      #(g7 resource request response (assoc state :f7 true))
-      (response-code 406 request response state :f7))))
+  (let [hdrs (header-value "accept-encoding" (:headers request))
+        enc-maps (parse-accept-header hdrs)
+        ;; add identity map, if not already present
+        enc-maps (if (some #(= "identity" (:major %)) enc-maps)
+                   enc-maps
+                   (conj enc-maps {:major "identity"
+                                   :minor nil
+                                   :parameters {"q" "1.0"}
+                                   :q 1.0}))
+        accepted-encodings (set (map :major enc-maps))
+        available-encodings (set (keys (apply-callback request resource :encodings-provided)))
+        encodings (intersection accepted-encodings available-encodings)
+        available (->> enc-maps
+                       (filter #(encodings (:major %)))
+                       (filter #(> (:q %) 0)))]
+    (if (empty? available)
+      (response-code 406 request response state :f7)
+      #(g7 resource
+           (assoc request :acceptable-encoding (content-type-string (first available)))
+           response
+           (assoc state :f7 true)))))
 
 (defn f6
   [resource request response state]
   (if (header-value "accept-encoding" (:headers request))
-    (let [acceptable (acceptable-type
-                      (let [encodings (keys (apply-callback request resource
-                                                            :encodings-provided))]
-                        (if (> 1 (count encodings))
-                          (conj encodings "*")
-                          encodings))
-                      (header-value "accept-encoding" (:headers request)))]
-      (if acceptable
-        #(f7 resource
-             (assoc request :acceptable-encoding acceptable)
-             response
-             (assoc state :f6 true))
-        (response-code 406 request response state :f6)))
+    #(f7 resource request response (assoc state :f6 true))
     #(g7 resource request response (assoc state :f6 false))))
 
 (defn e6

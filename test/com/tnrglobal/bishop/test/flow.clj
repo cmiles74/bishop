@@ -222,7 +222,8 @@
                    (= nil (:body response)))))))
 
     (testing "D4 Valid"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})})
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})}
+                          {:languages-provided (fn [r] [])})
             req (assoc-in test-request [:headers "accept-language"]
                           "en,*;q=0.8")]
         (let [response (run req res)]
@@ -232,7 +233,7 @@
     (testing "D4 Invalid"
       (let [res (resource {"text/html" "testing"})
             req (assoc-in test-request [:headers "accept-language"]
-                          "da,en;q=0.8")]
+                          "da;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
 
     ;; acceptable language available?
@@ -254,7 +255,7 @@
     (testing "D5 Invalid"
       (let [res (resource {"text/html" "testing"})
             req (assoc-in test-request [:headers "accept-language"]
-                          "da,en;q=0.8")]
+                          "da;q=0.8")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
 
     ;; acceptable charset?
@@ -316,14 +317,7 @@
             req (assoc-in test-request [:headers "accept-encoding"]
                           "gzip,*;q=0.8")]
         (let [response (run req res)]
-          (is (and (= 200 (:status response))
-                   (= "identity" (:body response)))))))
-
-    (testing "F6 Invalid"
-      (let [res (resource {"text/html" "testing"})
-            req (assoc-in test-request [:headers "accept-encoding"]
-                          "gzip,deflate;q=0.8")]
-        (is (= 406 (:status (run req res))) "Not Acceptable")))
+          (is (= 200 (:status response))))))
 
     ;; acceptable encoding available?
 
@@ -343,7 +337,7 @@
     (testing "F7 Invalid"
       (let [res (resource {"text/html" "testing"})
             req (assoc-in test-request [:headers "accept-encoding"]
-                          "gzip,deflate;q=0.8")]
+                          "gzip,deflate;q=0.8,identity;q=0")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
 
     ;; vary header
