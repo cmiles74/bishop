@@ -10,7 +10,8 @@
            [java.util Date Locale TimeZone]
            [java.text SimpleDateFormat]
            [org.apache.commons.lang.time DateUtils])
-  (:require [clojure.string :as string]))
+  (:require [com.tnrglobal.bishop.encoding :as encoding]
+            [clojure.string :as string]))
 
 ;; date format to use when outputting headers
 (def HTTP-DATE-FORMAT (doto
@@ -168,22 +169,26 @@
       (:major type-map))))
 
 (defn acceptable-type
-  "Compares the provided accept-header against a sequence of
+  "Compares the provided accept-header or map against a sequence of
   content-types and returns the content type that matches or nil if
   there are not valid matches."
-  [content-types accept-header]
+  [content-types acceptable]
 
   ;; parse out the content types being offered and the accept header
-  (let [accept-types (parse-accept-header accept-header)]
+  (let [accept-types (if (coll? acceptable)
+                       acceptable
+                       (parse-accept-header acceptable))]
 
     ;; return a string representation, not a map
     (content-type-string
 
-     ;; return the first matching content type
+     ;; return the first matching content type with a "q" value
+     ;; greater than 0
      (some (fn [accept-type]
              (some (fn [content-type]
-                     (if (content-type-matches?
-                          content-type accept-type)
+                     (if (and (content-type-matches?
+                               content-type accept-type)
+                              (< 0 (:q accept-type)))
                        content-type))
                    (map parse-content-type content-types)))
            accept-types))))
@@ -194,6 +199,27 @@
   [resource accept-header]
   (acceptable-type (keys (:response resource))
                    accept-header))
+
+(defn acceptable-encoding-type
+  "Compares the provided resource encodings against the provided
+  client 'accept-encoding' header and returns the name of a provided
+  encoding type that will be acceptable to the client. If the client
+  doesn't specifically list the 'identity' encoding type then it is
+  assumed."
+  [encodings accept-encoding]
+
+  ;; fetch the provided resource encodign types and parse the client's
+  ;; accept-encoding header
+  (let [available-encodings (keys encodings)
+
+        ;; if the client doesn't list the 'identity' encoding, we add
+        ;; it with a low priority
+        encoding-maps (parse-accept-header
+                       (if (re-find #"identity" accept-encoding)
+                         accept-encoding
+                         (str accept-encoding ",identity;q=0.1")))]
+
+    (acceptable-type available-encodings encoding-maps)))
 
 (defn variances
   "Returns a sequence of headers that, if different, would result in a
@@ -300,14 +326,25 @@
           (assoc response :body responder))))
 
       ;; return the response as-is
-      response))
+    response))
 
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
   returns the final response map for the request. If the body isn't
   yet attached it will be attached here."
   [[code request response state] resource]
-  (assoc (add-body (:response resource) request response) :status code))
+
+  (if (and (:acceptable-encoding request)
+           (not (= "identity" (:acceptable-encoding request))))
+
+    (let [encoder (encoding/get-encoding-function (:acceptable-encoding request))
+          encoded-body (encoder (:body response))]
+      (merge-responses response
+                       {:body encoded-body
+                        :headers {"Content-Encoding" (:acceptable-encoding request)}
+                        :status code}))
+
+    (assoc response :status code)))
 
 ;; states
 
@@ -646,25 +683,14 @@
 
 (defn f7
   [resource request response state]
-  (let [hdrs (header-value "accept-encoding" (:headers request))
-        enc-maps (parse-accept-header hdrs)
-        ;; add identity map, if not already present
-        enc-maps (if (some #(= "identity" (:major %)) enc-maps)
-                   enc-maps
-                   (conj enc-maps {:major "identity"
-                                   :minor nil
-                                   :parameters {"q" "1.0"}
-                                   :q 1.0}))
-        accepted-encodings (set (map :major enc-maps))
-        available-encodings (set (keys (apply-callback request resource :encodings-provided)))
-        encodings (intersection accepted-encodings available-encodings)
-        available (->> enc-maps
-                       (filter #(encodings (:major %)))
-                       (filter #(> (:q %) 0)))]
-    (if (empty? available)
+  (let [headers (header-value "accept-encoding" (:headers request))
+        acceptable (acceptable-encoding-type
+                    (apply-callback request resource :encodings-provided)
+                    headers)]
+    (if (empty? acceptable)
       (response-code 406 request response state :f7)
       #(g7 resource
-           (assoc request :acceptable-encoding (content-type-string (first available)))
+           (assoc request :acceptable-encoding acceptable)
            response
            (assoc state :f7 true)))))
 

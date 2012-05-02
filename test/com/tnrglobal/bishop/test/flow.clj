@@ -315,7 +315,7 @@
     (testing "F6 Valid"
       (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
             req (assoc-in test-request [:headers "accept-encoding"]
-                          "gzip,*;q=0.8")]
+                          "identity,*;q=0.8")]
         (let [response (run req res)]
           (is (= 200 (:status response))))))
 
@@ -327,9 +327,10 @@
         (is (= 200 (:status (run req res))))))
 
     (testing "F7 Available"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
+      (let [res (resource {"text/html" (fn [r]
+                                         {:body (:acceptable-encoding r)})})
             req (assoc-in test-request [:headers "accept-encoding"]
-                          "gzip,*;q=0.8")]
+                          "huzzah;q=0.8")]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= "identity" (:body response)))))))
@@ -337,7 +338,7 @@
     (testing "F7 Invalid"
       (let [res (resource {"text/html" "testing"})
             req (assoc-in test-request [:headers "accept-encoding"]
-                          "gzip,deflate;q=0.8,identity;q=0")]
+                          "huzzah;q=0.8,identity;q=0")]
         (is (= 406 (:status (run req res))) "Not Acceptable")))
 
     ;; vary header
@@ -353,7 +354,7 @@
       (let [res (resource {"text/html" "testing"})
             req (assoc test-request :headers
                        (concat (:headers test-request)
-                               {"accept-encoding" "gzip,*;q=0.8"}
+                               {"accept-encoding" "huzzah,*;q=0.8"}
                                {"accept-charset" "utf8,*;q=0.8"}
                                {"accept-language" "en,*;q=0.8"}
                                {"accept" "text/html,application/xhtml+xml;q=0.8"}))]
