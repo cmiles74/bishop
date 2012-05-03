@@ -271,29 +271,6 @@
       (is (= 406 (:status (run req1 res))) "Not Acceptable")
       (is (= 406 (:status (run req2 res))) "Not Acceptable")))
 
-  ;; acceptable charset?
-
-  (testing "E5 Unspecified"
-    (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})})
-          req test-request]
-      (let [response (run req res)]
-        (is (and (= 200 (:status response))
-                 (= nil (:body response)))))))
-
-  (testing "E5 Valid"
-    (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})})
-          req (assoc-in test-request [:headers "accept-charset"]
-                        "utf8,*;q=0.8")]
-      (let [response (run req res)]
-        (is (and (= 200 (:status response))
-                 (= "*" (:body response)))))))
-
-  (testing "E5 Invalid"
-    (let [res (resource {"text/html" "testing"})
-          req (assoc-in test-request [:headers "accept-charset"]
-                        "utf8,ISO-8859-1;q=0.8")]
-      (is (= 406 (:status (run req res))) "Not Acceptable")))
-
   ;; acceptable charset available?
 
   (testing "E6 Unspecified"
@@ -302,18 +279,18 @@
       (is (= 200 (:status (run req res))))))
 
   (testing "E6 Available"
-    (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})}
-                        {:charsets-provided (fn [r] ["UTF8"])})
-          req (assoc-in test-request [:headers "accept-charset"]
-                        "utf8,iso-8859-1;q=0.8")]
-      (let [response (run req res)]
-        (is (and (= 200 (:status response))
-                 (= "utf8" (:body response)))))))
+    (let [res (resource {"text/html" (fn [r] nil)})
+          req1 (assoc-in test-request [:headers "accept-charset"]
+                        "utf8,iso-8859-1;q=0.8")
+          req2 (assoc-in test-request [:headers "accept-charset"]
+                         "*")]
+      (is (and (= 200 (:status (run req1 res)))))
+      (is (and (= 200 (:status (run req2 res)))))))
 
-  (testing "E6 Invalid"
+  (testing "E6 Not Acceptable"
     (let [res (resource {"text/html" "testing"})
           req (assoc-in test-request [:headers "accept-charset"]
-                        "utf8,iso-8859-1;q=0.8")]
+                        "utf8;q=0,iso-8859-1;q=0.8")]
       (is (= 406 (:status (run req res))) "Not Acceptable")))
 
   ;; acceptable encoding available?

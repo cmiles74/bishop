@@ -579,29 +579,22 @@
 
 (defn e6
   [resource request response state]
-  (let [acceptable (:acceptable-charset request)]
-    (if (and (or (= "*" acceptable)
-                 (some #(= acceptable (.toLowerCase %))
-                       (apply-callback request resource :charsets-provided))))
+  (let [charset-maps (parse-accept-header (header-value "accept-charset" (:headers request)))
+        accepted-charsets (set (map :major charset-maps))
+        available-charsets (set (apply-callback request resource :charsets-provided))
+        overlap (intersection accepted-charsets available-charsets)
+        acceptable (->> charset-maps
+                        (filter #(overlap (:major %)))
+                        (filter #(> (:q %) 0)))]
+    (if (or (some #(= "*" (:major %)) charset-maps)
+            (not (empty? acceptable)))
       #(f6 resource request response (assoc state :e6 true))
       (response-error 406 request response state :e6))))
 
 (defn e5
   [resource request response state]
   (if (header-value "accept-charset" (:headers request))
-    (let [acceptable (acceptable-type
-                      (let [charsets (apply-callback request resource
-                                                     :charsets-provided)]
-                        (if (> 1 (count charsets))
-                          (conj charsets "*")
-                          charsets))
-                      (header-value "accept-charset" (:headers request)))]
-      (if acceptable
-        #(e6 resource
-             (assoc request :acceptable-charset acceptable)
-             response
-             (assoc state :e5 true))
-        (response-error 406 request response state :e5)))
+    #(e6 resource request response (assoc state :e5 true))
     #(f6 resource request response (assoc state :e5 false))))
 
 (defn d5
