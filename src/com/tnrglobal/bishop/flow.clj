@@ -606,29 +606,22 @@
 
 (defn d5
   [resource request response state]
-  (let [acceptable (:acceptable-language request)]
-    (if (and (or (= "*" acceptable)
-                 (some #(= acceptable (.toLowerCase %))
-                       (apply-callback request resource :languages-provided))))
+  (let [lang-maps (parse-accept-header (header-value "accept-language" (:headers request)))
+        accepted-langs (set (map :major lang-maps))
+        available-langs (set (apply-callback request resource :languages-provided))
+        overlap (intersection accepted-langs available-langs)
+        acceptable (->> lang-maps
+                        (filter #(overlap (:major %)))
+                        (filter #(> (:q %) 0)))]
+    (if (or (some #(= "*" (:major %)) lang-maps)
+            (not (empty? acceptable)))
       #(e5 resource request response (assoc state :d5 true))
       (response-error 406 request response state :d5))))
 
 (defn d4
   [resource request response state]
   (if (header-value "accept-language" (:headers request))
-    (let [acceptable (acceptable-type
-                      (let [languages (apply-callback request resource
-                                                      :languages-provided)]
-                        (if (> 1 (count languages))
-                          (conj languages "*")
-                          languages))
-                      (header-value "accept-language" (:headers request)))]
-      (if acceptable
-        #(d5 resource
-             (assoc request :acceptable-language acceptable)
-             response
-             (assoc state :d4 true))
-        (response-error 406 request response state :d4)))
+    #(d5 resource request response (assoc state :d4 true))
     #(e5 resource request response (assoc state :d4 false))))
 
 (defn c4

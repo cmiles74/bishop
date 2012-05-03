@@ -260,14 +260,16 @@
           req (assoc-in test-request [:headers "accept-language"]
                         "da,en;q=0.8")]
       (let [response (run req res)]
-        (is (and (= 200 (:status response))
-                 (= "en" (:body response)))))))
+        (is (= 200 (:status response))))))
 
   (testing "D5 Not Available"
     (let [res (resource {"text/html" "testing"})
-          req (assoc-in test-request [:headers "accept-language"]
-                        "da;q=0.8")]
-      (is (= 406 (:status (run req res))) "Not Acceptable")))
+          req1 (assoc-in test-request [:headers "accept-language"]
+                        "da;q=0.8")
+          req2 (assoc-in test-request [:headers "accept-language"]
+                        "en;q=0.0")]
+      (is (= 406 (:status (run req1 res))) "Not Acceptable")
+      (is (= 406 (:status (run req2 res))) "Not Acceptable")))
 
   ;; acceptable charset?
 
