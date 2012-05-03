@@ -26,6 +26,15 @@
              "accept" "*/*"
              "host" "localhost:8080"}})
 
+(deftest test-parse-accept-header
+  (is (= (parse-accept-header "da, en-gb;q=0.8, en;q=0.7")
+         [{:major "da", :minor nil, :parameters nil, :q 1.0}
+          {:major "en-gb", :minor nil, :parameters {"q" "0.8"}, :q 0.8}
+          {:major "en", :minor nil, :parameters {"q" "0.7"}, :q 0.7}]))
+  (is (= (parse-accept-header "iso-8859-5, unicode-1-1;q=0.8")
+         [{:major "iso-8859-5", :minor nil, :parameters nil, :q 1.0}
+          {:major "unicode-1-1", :minor nil, :parameters {"q" "0.8"}, :q 0.8}])))
+
 (deftest states
 
   ;; Available?

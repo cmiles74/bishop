@@ -95,7 +95,8 @@
   (sort #(compare (:q %2) (:q %1))
 
         ;; break up the header by acceptable type
-        (let [acceptable-types (string/split (.toLowerCase accept-header) #",")]
+        (let [acceptable-types (->> (string/split (.toLowerCase accept-header) #",")
+                                    (map #(string/trim %)))]
 
           ;; break each type into components
           (for [acceptable-type acceptable-types]
