@@ -3,8 +3,7 @@
 ;; tree.
 ;;
 (ns com.tnrglobal.bishop.flow
-  (:use [clojure.java.io]
-        [clojure.set])
+  (:use [clojure.java.io])
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
            [java.util Date Locale TimeZone]
