@@ -328,6 +328,13 @@
       ;; return the response as-is
     response))
 
+(defn encoding-function
+  "Returns the encoding function with the assigned key for the
+  provided request and resource."
+  [encoding resource request]
+  (second (some #(= encoding (first %))
+                (apply-callback request resource :encodings-provided))))
+
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
   returns the final response map for the request. If the body isn't
@@ -337,11 +344,14 @@
   (if (and (:acceptable-encoding request)
            (not (= "identity" (:acceptable-encoding request))))
 
-    (let [encoder (encoding/get-encoding-function (:acceptable-encoding request))
+    (let [encoder (encoding-function (:acceptable-encoding request)
+                                     resource
+                                     request)
           encoded-body (encoder (:body response))]
       (merge-responses response
                        {:body encoded-body
-                        :headers {"Content-Encoding" (:acceptable-encoding request)}
+                        :headers {"Content-Encoding"
+                                  (:acceptable-encoding request)}
                         :status code}))
 
     (assoc response :status code)))

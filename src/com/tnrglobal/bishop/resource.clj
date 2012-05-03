@@ -1,4 +1,4 @@
-l;;
+;;
 ;; Defines a resource and default callback functions.
 ;;
 (ns com.tnrglobal.bishop.resource
@@ -24,8 +24,7 @@ l;;
    :options (fn [request] {})
    :languages-provided (fn [reqeust] [] ["en"])
    :charsets-provided (fn [request] [])
-   :encodings-provided (fn [request] {"identity" encoding/identity-enc
-                                      "gzip" encoding/gzip})
+   :encodings-provided (fn [request] {"identity" encoding/identity-enc})
    :variances (fn [request] [])
    :generate-etag (fn [request] nil)
    :last-modified (fn [request] nil)
