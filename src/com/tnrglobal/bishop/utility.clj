@@ -2,7 +2,8 @@
 ;; Provides utility functions.
 ;;
 (ns com.tnrglobal.bishop.utility
-  (:use [clojure.java.io])
+  (:use [clojure.java.io]
+        [clojure.set])
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
            [java.util Date Locale TimeZone]
@@ -62,26 +63,28 @@
   (sort #(compare (:q %2) (:q %1))
 
         ;; break up the header by acceptable type
-        (let [acceptable-types (string/split (.toLowerCase accept-header) #",")]
+        (let [acceptable-types (->> (string/split (.toLowerCase accept-header)
+                                                  #",")
+                                    (map #(string/trim %)))]
 
-          ;; break each type into components
-          (for [acceptable-type acceptable-types]
-            (let [major-minor-seq (string/split acceptable-type #";")
-                  major-minor (first (string/split acceptable-type #";"))
-                  major (if major-minor (first (string/split major-minor #"/")))
-                  minor (if major-minor (second (string/split major-minor #"/")))
-                  parameters-all (second (string/split acceptable-type #";"))
-                  parameters (if parameters-all
-                               (apply hash-map
-                                      (string/split parameters-all #"=")))]
-              {:major major
-               :minor minor
-               :parameters parameters
+            ;; break each type into components
+            (for [acceptable-type acceptable-types]
+              (let [major-minor-seq (string/split acceptable-type #";")
+                    major-minor (first (string/split acceptable-type #";"))
+                    major (if major-minor (first (string/split major-minor #"/")))
+                    minor (if major-minor (second (string/split major-minor #"/")))
+                    parameters-all (second (string/split acceptable-type #";"))
+                    parameters (if parameters-all
+                                 (apply hash-map
+                                        (string/split parameters-all #"=")))]
+                {:major major
+                 :minor minor
+                 :parameters parameters
 
-               ;; extract the q parameter, use 1.0 if not present
-               :q (if (and parameters (parameters "q"))
-                    (Double/valueOf (parameters "q"))
-                    1.0)})))))
+                 ;; extract the q parameter, use 1.0 if not present
+                 :q (if (and parameters (parameters "q"))
+                      (Double/valueOf (parameters "q"))
+                      1.0)})))))
 
 (defn parse-content-type
   "Parse's a handler's methods content-type into a map of data."
@@ -106,7 +109,8 @@
   [type-map]
   (if type-map
     (if (:minor type-map)
-      (.toLowerCase (apply str (interpose "/" [(:major type-map) (:minor type-map)])))
+      (.toLowerCase
+       (apply str (interpose "/" [(:major type-map) (:minor type-map)])))
       (:major type-map))))
 
 (defn acceptable-type

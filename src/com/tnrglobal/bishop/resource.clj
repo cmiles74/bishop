@@ -23,7 +23,7 @@
    :valid-entity-length? (fn [request] true)
    :options (fn [request] {})
    :languages-provided (fn [reqeust] [] ["en"])
-   :charsets-provided (fn [request] [])
+   :charsets-provided (fn [request] ["utf8"])
    :encodings-provided (fn [request] {"identity" encoding/identity-enc})
    :variances (fn [request] [])
    :generate-etag (fn [request] nil)

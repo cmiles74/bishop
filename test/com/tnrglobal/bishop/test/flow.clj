@@ -5,6 +5,7 @@
 (ns com.tnrglobal.bishop.test.flow
   (:use [com.tnrglobal.bishop.core]
         [com.tnrglobal.bishop.flow]
+        [com.tnrglobal.bishop.utility]
         [clojure.test])
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
@@ -25,6 +26,15 @@
    :headers {"user-agent" "curl/7.21.4 (universal-apple-darwin11.0) libcurl/7.21.4 OpenSSL/0.9.8r zlib/1.2.5"
              "accept" "*/*"
              "host" "localhost:8080"}})
+
+(deftest test-parse-accept-header
+  (is (= (parse-accept-header "da, en-gb;q=0.8, en;q=0.7")
+         [{:major "da", :minor nil, :parameters nil, :q 1.0}
+          {:major "en-gb", :minor nil, :parameters {"q" "0.8"}, :q 0.8}
+          {:major "en", :minor nil, :parameters {"q" "0.7"}, :q 0.7}]))
+  (is (= (parse-accept-header "iso-8859-5, unicode-1-1;q=0.8")
+         [{:major "iso-8859-5", :minor nil, :parameters nil, :q 1.0}
+          {:major "unicode-1-1", :minor nil, :parameters {"q" "0.8"}, :q 0.8}])))
 
 (deftest states
 
@@ -222,13 +232,15 @@
                    (= nil (:body response)))))))
 
     (testing "D4 Valid"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})}
-                          {:languages-provided (fn [r] [])})
-            req (assoc-in test-request [:headers "accept-language"]
-                          "en,*;q=0.8")]
-        (let [response (run req res)]
-          (is (and (= 200 (:status response))
-                   (= "*" (:body response)))))))
+      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})})
+            req1 (assoc-in test-request [:headers "accept-language"]
+                           "en,*;q=0.8")
+            req2 (assoc-in test-request [:headers "accept-language"]
+                           "en-us,en;q=0.5")]
+        (let [response1 (run req1 res)
+              response2 (run req2 res)]
+          (is (= 200 (:status response1)))
+          (is (= 200 (:status response2))))))
 
     (testing "D4 Invalid"
       (let [res (resource {"text/html" "testing"})
@@ -243,43 +255,22 @@
             req test-request]
         (is (= 200 (:status (run req res))))))
 
-    (testing "D5 Available"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})}
-                          {:languages-provided (fn [r] ["en"])})
-            req (assoc-in test-request [:headers "accept-language"]
-                          "da,en;q=0.8")]
-        (let [response (run req res)]
-          (is (and (= 200 (:status response))
-                   (= "en" (:body response)))))))
+  (testing "D5 Available"
+    (let [res (resource {"text/html" (fn [r] {:body (:acceptable-language r)})}
+                        {:languages-provided (fn [r] ["en"])})
+          req (assoc-in test-request [:headers "accept-language"]
+                        "da,en;q=0.8")]
+      (let [response (run req res)]
+        (is (= 200 (:status response))))))
 
-    (testing "D5 Invalid"
-      (let [res (resource {"text/html" "testing"})
-            req (assoc-in test-request [:headers "accept-language"]
-                          "da;q=0.8")]
-        (is (= 406 (:status (run req res))) "Not Acceptable")))
-
-    ;; acceptable charset?
-
-    (testing "E5 Unspecified"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})})
-            req test-request]
-        (let [response (run req res)]
-          (is (and (= 200 (:status response))
-                   (= nil (:body response)))))))
-
-    (testing "E5 Valid"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})})
-            req (assoc-in test-request [:headers "accept-charset"]
-                          "utf8,*;q=0.8")]
-        (let [response (run req res)]
-          (is (and (= 200 (:status response))
-                   (= "*" (:body response)))))))
-
-    (testing "E5 Invalid"
-      (let [res (resource {"text/html" "testing"})
-            req (assoc-in test-request [:headers "accept-charset"]
-                          "utf8,ISO-8859-1;q=0.8")]
-        (is (= 406 (:status (run req res))) "Not Acceptable")))
+  (testing "D5 Not Available"
+    (let [res (resource {"text/html" "testing"})
+          req1 (assoc-in test-request [:headers "accept-language"]
+                        "da;q=0.8")
+          req2 (assoc-in test-request [:headers "accept-language"]
+                        "en;q=0.0")]
+      (is (= 406 (:status (run req1 res))) "Not Acceptable")
+      (is (= 406 (:status (run req2 res))) "Not Acceptable")))
 
     ;; acceptable charset available?
 
@@ -288,20 +279,20 @@
             req test-request]
         (is (= 200 (:status (run req res))))))
 
-    (testing "E6 Available"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-charset r)})}
-                          {:charsets-provided (fn [r] ["UTF8"])})
-            req (assoc-in test-request [:headers "accept-charset"]
-                          "utf8,iso-8859-1;q=0.8")]
-        (let [response (run req res)]
-          (is (and (= 200 (:status response))
-                   (= "utf8" (:body response)))))))
+  (testing "E6 Available"
+    (let [res (resource {"text/html" (fn [r] nil)})
+          req1 (assoc-in test-request [:headers "accept-charset"]
+                        "utf8,iso-8859-1;q=0.8")
+          req2 (assoc-in test-request [:headers "accept-charset"]
+                         "*")]
+      (is (and (= 200 (:status (run req1 res)))))
+      (is (and (= 200 (:status (run req2 res)))))))
 
-    (testing "E6 Invalid"
-      (let [res (resource {"text/html" "testing"})
-            req (assoc-in test-request [:headers "accept-charset"]
-                          "utf8,iso-8859-1;q=0.8")]
-        (is (= 406 (:status (run req res))) "Not Acceptable")))
+  (testing "E6 Not Acceptable"
+    (let [res (resource {"text/html" "testing"})
+          req (assoc-in test-request [:headers "accept-charset"]
+                        "utf8;q=0,iso-8859-1;q=0.8")]
+      (is (= 406 (:status (run req res))) "Not Acceptable")))
 
     ;; acceptable encoding?
 

@@ -486,56 +486,44 @@
 
 (defn e6
   [resource request response state]
-  (let [acceptable (:acceptable-charset request)]
-    (if (and (or (= "*" acceptable)
-                 (some #(= acceptable (.toLowerCase %))
-                       (apply-callback request resource :charsets-provided))))
-      #(f6 resource request response (assoc state :e6 true))
+  (let [acceptable (acceptable-type
+                    (let [charsets (apply-callback request resource
+                                                   :charsets-provided)]
+                      (if (> 1 (count charsets))
+                        (conj charsets "*")
+                        charsets))
+                    (header-value "accept-charset" (:headers request)))]
+    (if acceptable
+      #(f6 resource
+           (assoc request :acceptable-charset acceptable)
+           response
+           (assoc state :e6 true))
       (response-code 406 request response state :e6))))
 
 (defn e5
   [resource request response state]
   (if (header-value "accept-charset" (:headers request))
-    (let [acceptable (acceptable-type
-                      (let [charsets (apply-callback request resource
-                                                     :charsets-provided)]
-                        (if (> 1 (count charsets))
-                          (conj charsets "*")
-                          charsets))
-                      (header-value "accept-charset" (:headers request)))]
-      (if acceptable
-        #(e6 resource
-             (assoc request :acceptable-charset acceptable)
-             response
-             (assoc state :e5 true))
-        (response-code 406 request response state :e5)))
+    #(e6 resource request response (assoc state :e5 true))
     #(f6 resource request response (assoc state :e5 false))))
 
 (defn d5
   [resource request response state]
-  (let [acceptable (:acceptable-language request)]
-    (if (and (or (= "*" acceptable)
-                 (some #(= acceptable (.toLowerCase %))
-                       (apply-callback request resource :languages-provided))))
-      #(e5 resource request response (assoc state :d5 true))
+  (let [acceptable (acceptable-type
+                    (let [languages (apply-callback request resource
+                                                    :languages-provided)]
+                      languages)
+                    (header-value "accept-language" (:headers request)))]
+    (if acceptable
+      #(e5 resource
+           (assoc request :acceptable-language acceptable)
+           response
+           (assoc state :d5 true))
       (response-code 406 request response state :d5))))
 
 (defn d4
   [resource request response state]
   (if (header-value "accept-language" (:headers request))
-    (let [acceptable (acceptable-type
-                      (let [languages (apply-callback request resource
-                                                      :languages-provided)]
-                        (if (> 1 (count languages))
-                          (conj languages "*")
-                          languages))
-                      (header-value "accept-language" (:headers request)))]
-      (if acceptable
-        #(d5 resource
-             (assoc request :acceptable-language acceptable)
-             response
-             (assoc state :d4 true))
-        (response-code 406 request response state :d4)))
+    #(d5 resource request response (assoc state :d4 true))
     #(e5 resource request response (assoc state :d4 false))))
 
 (defn c4
