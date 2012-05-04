@@ -242,12 +242,19 @@
           #(n11 resource request response (assoc state :n5 true))
           (response-code 410 request response state :n5)))
 
+(defn m20b
+  [resource request response state]
+  (let [delete-complete (apply-callback request resource :delete-completed?)]
+    (if delete-complete
+      #(o20 resource request response (assoc state :m20b true))
+      (response-code 202 request response state :m20b))))
+
 (defn m20
   [resource request response state]
   (let [delete-resource (apply-callback request resource :delete-resource)]
     (if delete-resource
-      #(o20 resource request response (assoc state :m20 true))
-      (response-code 202 request response state :n16))))
+      #(m20b resource request response (assoc state :m20 true))
+      (response-code 500 request response state :m20))))
 
 (defn m16
   [resource request response state]

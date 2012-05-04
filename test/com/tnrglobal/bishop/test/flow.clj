@@ -556,6 +556,19 @@
                                    {"if-modified-since"
                                     "Fri, 31 Dec 2011 23:59:59 GMT"}))]
         (let [response (run req res)]
+          (is (= 500 (:status response))))))
+
+    (testing "M20B Delete Incomplete"
+      (let [res (resource {"text/html" "testing"}
+                          {:allowed-methods (fn [request] [:delete])
+                           :last-modified (fn [request] (Date. 946684799000))
+                           :delete-resource (fn [request] true)
+                           :delete-completed? (fn [request] false)})
+            req (assoc (assoc test-request :request-method :delete)
+                  :headers (concat (:headers test-request)
+                                   {"if-modified-since"
+                                    "Fri, 31 Dec 2011 23:59:59 GMT"}))]
+        (let [response (run req res)]
           (is (= 202 (:status response))))))
 
     (testing "M20 DELETE If-Umodified-Since, False"
