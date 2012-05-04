@@ -46,6 +46,14 @@
           req test-request]
       (is (= 503 (:status (run req res))) "Service unavailable")))
 
+    (testing "B13 Invalid, Try Again Later"
+    (let [res (resource {"text/html" "testing..."}
+                        {:service-available? (fn [request] {:headers {"Retry-After" "30"}})})
+          req test-request
+          response (run req res)]
+      (is (and (= 503 (:status response))
+               (= "30" ((:headers response) "Retry-After"))))))
+
   (testing "B13 Valid"
     (let [res (resource {"text/html" "testing..."})
           req test-request]

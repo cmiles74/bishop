@@ -677,10 +677,17 @@
 (defn b13
   "Is the resource available?"
   [resource request response state]
-  (decide #(apply-callback request resource :service-available?)
-          true
-          #(b12 resource request response (assoc state :b13 true))
-          #(response-code 503 request response state :b13)))
+  (let [available (apply-callback request resource :service-available?)]
+    (if (or (not available)
+            (map? available))
+      (response-code 503
+                     request
+                     (if (not available)
+                       response
+                       (merge-responses response available))
+                     state
+                     :b13)
+      #(b12 resource request response (assoc state :b13 true)))))
 
 (defn start
   "This function is the first stage in our processing tree. It will
