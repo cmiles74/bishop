@@ -99,25 +99,74 @@
    ;; nil, uses the URI of the request as the base.
    :base-uri (fn [request] nil)
 
-   :validate-content-checksum (fn [request] nil)
+   ;; This function is called if :post-is-create? returns false. It
+   ;; should process any POST request and return true or a response
+   ;; map if successful.
+   :process-post (fn [request] nil)
 
-   :languages-provided (fn [reqeust] [] ["en"])
+   ;; Returns a sequence of character sets provided by this
+   ;; resource. Correctly returning the appropriate character set is
+   ;; handled by the resource.
    :charsets-provided (fn [request] ["utf8"])
-   :encodings-provided (fn [request] {"identity" encoding/identity-enc})
-   :variances (fn [request] [])
-   :generate-etag (fn [request] nil)
-   :last-modified (fn [request] nil)
 
-   :expires (fn [request] nil)
-   :content-types-provided (fn [request] ["text/html"])
-   :multiple-representations (fn [request] false)
+   ;; Returns a sequence of languages provided by the
+   ;; resource. Correctly returning content with the correct language
+   ;; is handled by the resource.
+   :languages-provided (fn [reqeust] [] ["en"])
+
+   ;; Returns a map of encodings provided by the resource, they key is
+   ;; the name of the encoding and the value is a function that can
+   ;; correctly encode the response body. Only the "identity" encoding
+   ;; is provided, most other encoding (i.e. GZIP) should likely be
+   ;; provided by additional Ring middleware. This function should be
+   ;; used to support encodings for which no appropriate Ring
+   ;; middleware exists.
+   :encodings-provided (fn [request] {"identity" encoding/identity-enc})
+
+   ;; Returns a sequence of header names that should be included in
+   ;; the response's "Vary" header. The headers "Accept",
+   ;; "Accept-Encoding", "Accept-Charset" and "Accept-Language" are
+   ;; handled automatically by Bishop.
+   :variances (fn [request] [])
+
+   ;; Returns true if the provided PUT request would cause a conflict,
+   ;; the "409 Conflict" response will be sent to the client.
    :is-conflict? (fn [request] false)
 
-   :process-post (fn [request] nil)
-   :is-redirect? (fn [request] false)
-   :redirect (fn [request] nil)
+   ;; Returns true if multiple representations of the response are
+   ;; possible and a single representation cannot be chosen; a "300
+   ;; Multiple Choices" response will be sent to the client.
+   :multiple-representations (fn [request] false)
 
+   ;; Returns true if the resource is known to have previously
+   ;; existed.
    :previously-existed? (fn [request] false)
 
+   ;; If the resource has been permanently moved to a new location,
+   ;; this function should return a String with the URI of the new
+   ;; location.
    :moved-permanently? (fn [request] false)
-   :moved-temporarily? (fn [request] false)})
+
+   ;; If the resource has been temporarily moved to a new location,
+   ;; this function should return a String with the URI of the new
+   ;; location.
+   :moved-temporarily? (fn [request] false)
+
+   ;; Returns a Date with the last modified date of the resource. This
+   ;; value will be used to construct the "Last-Modified" header.
+   :last-modified (fn [request] nil)
+
+   ;; If this resource expires, the Date of that expiration should be
+   ;; returned. This value will be used to construct the "Expires"
+   ;; header.
+   :expires (fn [request] nil)
+
+   ;; Returns a value that will be used to construct the "ETag" header
+   ;; for use in conditional requests.
+   :generate-etag (fn [request] nil)
+
+   ;; Verifies the "Content-MD5" header of the request against the
+   ;; request's body. You may perform your own validation or return
+   ;; true to bypass header validation. By default nil is returned and
+   ;; Bishop will handle this validation automatically.
+   :validate-content-checksum (fn [request] nil)})
