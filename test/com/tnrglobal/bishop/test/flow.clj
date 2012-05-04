@@ -615,8 +615,9 @@
     (testing "O16 PUT New Resource"
       (let [res (resource {"text/html" (fn [request]
                                          {:body "testing"
-                                          :headers {"location" "/testing/1209"}})}
-                          {:allowed-methods (fn [request] [:put])})
+                                          :headers {"Location" "/testing/1209"}})}
+                          {:allowed-methods (fn [request] [:put])
+                           :resource-exists? (fn [request] false)})
             req (assoc test-request :request-method :put)]
         (let [response (run req res)]
           (is (= 201 (:status response))))))
@@ -633,19 +634,21 @@
       (let [res (resource {"text/html" (fn [request]
                                          {:body "testing"})}
                           {:allowed-methods (fn [request] [:post])
+                           :allow-missing-post? (fn [request] true)
                            :post-is-create? (fn [request] true)
-                           :create-path (fn [request] "/testing/new")})
+                           :create-path (fn [request] "testing/new")})
             req (assoc test-request :request-method :post)]
         (let [response (run req res)]
-          (is (= 303 (:status response))))))
+          (is (and (= 303 (:status response))
+                   (= "/testing/new" ((:headers response) "Location")))))))
 
     (testing "N11, Post is Not Create, 'Location' Header"
       (let [res (resource {"text/html" (fn [request]
-                                         {:body "testing for realz"
-                                          :headers {"location" "/testing/21"}})}
+                                         {:body "testing for realz"})}
                           {:allowed-methods (fn [request] [:post])
                            :post-is-create? (fn [request] false)
-                           :process-post (fn [request] true)})
+                           :process-post (fn [request]
+                                           {:headers {"Location" "/testing/21"}})})
             req (assoc test-request :request-method :post)]
         (let [response (run req res)]
           (is (= 201 (:status response))))))

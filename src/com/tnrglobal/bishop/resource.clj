@@ -76,7 +76,28 @@
    ;; it should return true if the deletion was successful.
    :delete-resource (fn [request] false)
 
+   ;; This function is called after a sucessful call to
+   ;; :delete-resource and should return false if the deletionwas
+   ;; accepted but cannot be guaranteed to have completed.
    :delete-completed? (fn [request] true)
+
+   ;; Returns true if POST requests should be treated as a request to
+   ;; PUT content into a (potentically new) resource as opposed to a
+   ;; generic submission for processing. If true is returned, the
+   ;; :create-path function will be called and the rest of the request
+   ;; will be treated like a PUT to that path.
+   :post-is-create? (fn [request] false)
+
+   ;; Will be called on a POST request if :post-is-create? returns
+   ;; true. The path returned should be a valid URI part following the
+   ;; dispatcher prefix; that path will replace the path under the
+   ;; requests :uri key for all subsequent resource function calls.
+   :create-path (fn [request] false)
+
+   ;; Called after :create-path but before setting the "Location"
+   ;; response header; determins the root URI of the new resource. If
+   ;; nil, uses the URI of the request as the base.
+   :base-uri (fn [request] nil)
 
    :validate-content-checksum (fn [request] nil)
 
@@ -91,12 +112,11 @@
    :content-types-provided (fn [request] ["text/html"])
    :multiple-representations (fn [request] false)
    :is-conflict? (fn [request] false)
-   :post-is-create? (fn [request] false)
-   :base-uri (fn [request] nil)
+
    :process-post (fn [request] nil)
    :is-redirect? (fn [request] false)
    :redirect (fn [request] nil)
-   :create-path (fn [request] false)
+
    :previously-existed? (fn [request] false)
 
    :moved-permanently? (fn [request] false)

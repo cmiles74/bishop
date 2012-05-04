@@ -62,7 +62,6 @@
   "Calculates and appends the body to the provided request."
   [resource request response]
   (if (nil? (:body response))
-      ;(not (some #(= :body %) response))
 
     ;; get the body and add it to the response
     (cond
@@ -85,7 +84,7 @@
           :else
           (assoc response :body responder))))
 
-      ;; return the response as-is
+    ;; return the response as-is
     response))
 
 (defn return-code
@@ -167,24 +166,27 @@
 
 (defn p11
   [resource request response state]
-  ;; TODO: Should we add the body here? I don't see any other way to
-  ;; handle PUT transactions.
-  (let [response-out (add-body (:response resource) request response)]
-    (if (not (some #(= "location" %) (keys (:headers response-out))))
-      #(o20 resource request response-out (assoc state :p11 true))
-      (response-code 201 request response-out state :p11))))
+  (if (not (some #(= "Location" %) (keys (:headers response))))
+    #(o20 resource request response (assoc state :p11 true))
+    (response-code 201 request response state :p11)))
 
 (defn p3
   [resource request response state]
   (if (apply-callback request resource :is-conflict?)
     (response-code 409 request response state :p3)
-    #(p11 resource request response (assoc state :p3 false))))
+    #(p11 resource
+          request
+          (add-body (:response resource) request response)
+          (assoc state :p3 false))))
 
 (defn o14
   [resource request response state]
   (if (apply-callback request resource :is-conflict?)
     (response-code 409 request response state :o14)
-    #(p11 resource request response (assoc state :o14 false))))
+    #(p11 resource
+          request
+          (add-body (:response resource) request response)
+          (assoc state :o14 false))))
 
 (defn o16
   [resource request response state]
@@ -199,14 +201,18 @@
 
       ;; yep, we're creating!
       create
-      (let [create-path (apply-callback request resource :create-path)]
+      (let [create-path (apply-callback request resource :create-path)
+            base-uri (apply-callback request resource :base-uri)]
         (if (nil? create-path)
           (throw (Exception. (str "Invalid resource, no create-path")))
 
           ;; redirect to the create path
-          (let [url (str (:uri request) "/" create-path)]
+          (let [url (str (if (nil? base-uri)
+                           (:uri request)
+                           base-uri)
+                         create-path)]
             #(response-code 303
-                             request
+                             (assoc request :uri url)
                              (assoc response :headers
                                     (assoc (:headers response)
                                       "location" url))
@@ -220,14 +226,24 @@
 
           ;; status code returned
           (number? process-post)
-          (response-code process-post request response state :n11)
+          (response-code process-post
+                         request
+                         response
+                         state :n11)
 
           (or (nil? process-post)
               (= false process-post))
           (throw (Exception. (str "Process post invalid")))
 
           :else
-          #(p11 resource request response (assoc state :n11 false)))))))
+          #(p11 resource
+                request
+                (add-body (:response resource)
+                          request
+                          (if (map? process-post)
+                            (merge-responses response process-post)
+                            response))
+                (assoc state :n11 false)))))))
 
 (defn n16
   [resource request response state]
