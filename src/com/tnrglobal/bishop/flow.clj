@@ -207,17 +207,21 @@
           (throw (Exception. (str "Invalid resource, no create-path")))
 
           ;; redirect to the create path
-          (let [url (str (if (nil? base-uri)
-                           (:uri request)
-                           base-uri)
-                         create-path)]
+          (let [uri (str (if (nil? base-uri) (:uri request) base-uri)
+                         create-path)
+                request-out (merge request
+                                   {:uri uri
+                                    :request-method :put})
+                response-out (add-body (:response resource)
+                                       request-out
+                                       (merge-responses
+                                        response
+                                        {:headers {"Location" uri
+                                                   "debug" "N11, switching to PUT"}}))]
             #(response-code 303
-                             (assoc request :uri url)
-                             (assoc response :headers
-                                    (assoc (:headers response)
-                                      "location" url))
-                             state
-                             :n11))))
+                            request-out
+                            response-out
+                            state :n11))))
 
       ;; not a create
       (= false create)
