@@ -1,4 +1,4 @@
-(defproject bishop "1.0-SNAPSHOT"
+(defproject bishop "1.0"
   :description "A Webmachine-like REST framework"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/tools.logging "0.2.3"]
