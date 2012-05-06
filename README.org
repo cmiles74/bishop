@@ -29,15 +29,25 @@ compliant services.
   directly. The web APIs that I have constructed so far have been
   coded on Ring and I don't want to pull Compojure into the mix.
 
-* How Does it Work?
+* Installation
 
-  Well, things will be in flux until the first version of the library
-  is completed. So there's that.
-
-  Anyway, let's say you have a function that will say "Hello" to
-  people.
+ To use Bishop, add the following to your project’s “:dependencies”:
 
   #+BEGIN_SRC clojure
+  [tnrglobal/bishop "1.0"]
+  #+END_SRC
+
+* How Does it Work?
+
+  Anyway, let's say you have a function that will say "Hello" to
+  people. First reference Bishop and likely Jetty and Ring.
+
+  #+BEGIN_SRC clojure
+  (ns hello.core
+    (:require [com.tnrglobal.bishop.core :as bishop]
+              [ring.adapter.jetty]
+              [ring.middleware.params]))
+
   (defn hello
     [name]
     (str "Hello " name "!"))
@@ -79,8 +89,7 @@ compliant services.
   #+BEGIN_SRC clojure
   (def app
     (-> (bishop/handler routes)
-        (wrap-params)
-        (wrap-stacktrace)))
+        (wrap-params)))
   #+END_SRC
 
   Aside from parsing the URI and matching it to the route, Bishop is
