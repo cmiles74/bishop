@@ -1,5 +1,5 @@
 (defproject tnrglobal/bishop "1.0"
-  :description "A Webmachine-like REST framework"
+  :description "A Webmachine-like REST library"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/tools.logging "0.2.3"]
                  [ring/ring "1.0.1"]
