@@ -216,8 +216,7 @@
                                        request-out
                                        (merge-responses
                                         response
-                                        {:headers {"Location" uri
-                                                   "debug" "N11, switching to PUT"}}))]
+                                        {:headers {"Location" uri}}))]
             #(response-code 303
                             request-out
                             response-out
