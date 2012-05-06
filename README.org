@@ -1,15 +1,15 @@
-Bishop is a [[http://wiki.basho.com/Webmachine.html][Webmachine]]-like framework for Clojure. The primary goal of
+Bishop is a [[http://wiki.basho.com/Webmachine.html][Webmachine]]-like library for Clojure. The primary goal of
 this project is to make it much easier to construct a clean, [[http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol][HTTP 1.1]]
 compliant web-based API. With this ground-work laid, it will be much
 easier for the developer to construct [[http://en.wikipedia.org/wiki/REST][REST-ful]] or even [[http://en.wikipedia.org/wiki/HATEOAS][HATEOAS]]
 compliant services.
 
-* Warning: Work In Progress
+* Warning: Early Days
 
-  Be warned that this is a work in progress! Not only is this project
-  wholly untested, it's not even complete. I am earnestly working on
-  this project and expect to finish development on an alpha version in
-  April of 2012.
+  This is only our first release of this library and there may be
+  issues. We do have [[https://github.com/tnr-global/bishop-sample][a sample application]] that we put together, I’m
+  also working on implementing an application for production use that
+  leverages this library. Be warned, here there may be bugs!
 
 * Aren't There Other Projects that Do This?
 
@@ -104,7 +104,7 @@ compliant services.
 
 * Sample Application
 
-  I have put a small, [[https://github.com/tnr-global/bishop-sample][fairly poor sample application]] together to make
+  I have put a small, [[https://github.com/tnr-global/bishop-sample][simple application]] together to make
   sure that the library builds and mostly functions. If you’re
   interested, you are welcome to take a look at it.
 
