@@ -134,10 +134,7 @@
 
         ;; run the route through the state machine
         (map? route)
-        (try
-          (run (merge request path-info) route)
-          (catch Exception exception
-            {:status 400 :body "Malformed message"}))
+        (run (merge request path-info) route)
 
         ;; we have an invalid route, no resource available
         :else

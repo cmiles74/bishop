@@ -77,7 +77,7 @@
    :delete-resource (fn [request] false)
 
    ;; This function is called after a sucessful call to
-   ;; :delete-resource and should return false if the deletionwas
+   ;; :delete-resource and should return false if the deletion was
    ;; accepted but cannot be guaranteed to have completed.
    :delete-completed? (fn [request] true)
 
