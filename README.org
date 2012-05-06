@@ -4,6 +4,12 @@ compliant web-based API. With this ground-work laid, it will be much
 easier for the developer to construct [[http://en.wikipedia.org/wiki/REST][REST-ful]] or even [[http://en.wikipedia.org/wiki/HATEOAS][HATEOAS]]
 compliant services.
 
+When you create a “resource” with Bishop, you get a function that
+expects a [[https://github.com/mmcgrana/ring][Ring]] request map and will return a response map. This
+library was designed to be used with Ring and should work with any
+Ring middle-ware. Bishop provides its own routing mechanism but you
+should be able to use another router if you like (for instance [[https://github.com/weavejester/clout][Clout]]).
+
 * Warning: Early Days
 
   This is only our first release of this library and there may be
