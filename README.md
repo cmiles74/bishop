@@ -9,7 +9,7 @@ concentrate on a building a clean and consistent API be it
 [HATEOAS](http://en.wikipedia.org/wiki/HATEOAS) compliant.
 
 When you create a “resource” with Bishop, you receive a function that
-expects a map request values and will return a map of response
+expects a map of request values and will return a map of response
 values. This library was designed to be used with
 [Ring](https://github.com/mmcgrana/ring) and should work with any Ring
 middle-ware. Bishop provides its own routing mechanism but you can use
@@ -18,12 +18,13 @@ another if you like (for instance
 
 This is our first release of this library and there may be bugs that
 need squashing, please
-[register an issue](https://github.com/tnr-global/bishop/issues)
-if you notice any or send us a pull request if you fix them. We do
-have
+[register an issue](https://github.com/tnr-global/bishop/issues) if
+you notice any or send us a pull request if you fix them. We’re also
+providing
 [a sample application](https://github.com/tnr-global/bishop-sample)
-that we put together, I’m also working on implementing an application
-for production use that leverages this library.
+that provides a more in-depth example. We’re working on implementing
+an application for production use that leverages this library, we
+expect to be polishing it further over the coming months.
 
 ## Aren't There Other Projects that Do This?
 
@@ -31,7 +32,6 @@ Yes, there are several other projects that are looking to do this
 very same thing. The ones that I am aware of are...
 
 *  [Clothesline](https://github.com/banjiewen/Clothesline)
-
 *  [Plugboard](https://github.com/malcolmsparks/plugboard)
 
 This project has slightly different goals from those mentioned
@@ -113,10 +113,11 @@ Lastly, you can add this as your Ring handler function.
 ```
 
 Aside from parsing the URI and matching it to the route, Bishop is
-doing a lot of other work as well. It will cover all of the behavior
-in this
-[HTTP 1.1 flow chart](http://wiki.basho.com/Webmachine-Diagram.html). In
-this instance, Bishop is...
+doing a lot of other work as well. It covers all of the behavior in
+this
+[HTTP 1.1 flow chart](http://wiki.basho.com/Webmachine-Diagram.html),
+it does this by providing a state-machine that implements the decision
+tree. In our example, Bishop is...
 
 * Parsing the client URI and route, then populating the "path-info"
 map
@@ -137,8 +138,9 @@ And so on.
 
 ## Sample Application
 
-We have put a small, [simple application](https://github.com/tnr-global/bishop-sample) together to make
-sure that the library builds and mostly functions. If you’re
-interested, you are welcome to take a look at it.
+We have put a small,
+[sample application](https://github.com/tnr-global/bishop-sample) that
+provides a more in-depth example. You may find it useful to look the
+sample code over to get a better idea of how Bishop functions.
 
 [https://github.com/tnr-global/bishop-sample](https://github.com/tnr-global/bishop-sample)
