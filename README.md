@@ -18,7 +18,7 @@ another if you like (for instance
 
 This is our first release of this library and there may be bugs that
 need squashing, please
-[register an issue](https://github.com/tnr-global/bishop-sample/issues)
+[register an issue](https://github.com/tnr-global/bishop/issues)
 if you notice any or send us a pull request if you fix them. We do
 have
 [a sample application](https://github.com/tnr-global/bishop-sample)
@@ -60,9 +60,7 @@ people. Add the `com.tnrglobal.bishop.core` namespace to your project.
 
 ```
 (ns hello.core
-  (:require [com.tnrglobal.bishop.core :as bishop]
-            [ring.adapter.jetty]
-            [ring.middleware.params]))
+  (:require [com.tnrglobal.bishop.core :as bishop]))
 ```
 We also define the function that does our work.
 
@@ -72,7 +70,10 @@ We also define the function that does our work.
   (str "Hello " name "!"))
 ```
 
-We can then define a resource that says "Hello" in HTML or JSON.
+We can then define a resource that says "Hello" in HTML or JSON. In
+this example we use [Hiccup](https://github.com/weavejester/hiccup) to
+generate our HTML and [CLJ-JSON](https://github.com/mmcgrana/clj-json)
+to generate our JSON output.
 
 ```
 (def hello-resource
@@ -86,8 +87,8 @@ We can then define a resource that says "Hello" in HTML or JSON.
         {:message (hello (:name (:path-info request)))}))}))
 ```
 
-This resource can return either HTML or JSON content, depending on
-the headers of the request. It expects to have a value in the
+This resource can return either HTML or JSON content, depending on the
+“Accept” headers of the request. It expects to have a value in the
 "path-info" map under the ":name" key. This comes from the routing.
 
 ```
@@ -101,14 +102,14 @@ We route incoming request for "/hello/something" to our
 "404" code to the client. Bishop will parse the route and the
 request's URI to populate the "path-info" map for your application,
 the goal is to do it in the same way that
-[Webmachine handles dispatch](http://wiki.basho.com/Webmachine-Dispatching.html).
+[Webmachine handles dispatch](http://wiki.basho.com/Webmachine-Dispatching.html). If
+you prefer another routing library, feel free to use it!
 
 Lastly, you can add this as your Ring handler function.
 
 ```
 (def app
-  (-> (bishop/handler routes)
-  (wrap-params)))
+  (-> (bishop/handler routes)))
 ```
 
 Aside from parsing the URI and matching it to the route, Bishop is
