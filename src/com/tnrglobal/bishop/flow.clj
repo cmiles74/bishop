@@ -300,8 +300,8 @@
         if-modified-since (:if-modified-since request)]
     (if (> (.getTime last-modified)
            (.getTime if-modified-since))
-      (response-code 304 request response state :l17)
-      #(m16 resource request response (assoc state :l17 false)))))
+      #(m16 resource request response (assoc state :l17 false))
+      (response-code 304 request response state :l17))))
 
 (defn l15
   [resource request response state]
@@ -420,8 +420,8 @@
         if-unmodified-since (parse-header-date
                              (header-value "if-unmodified-since"
                                            (:headers request)))]
-    (if (and last-modified (> (.getTime if-unmodified-since)
-                              (.getTime last-modified)))
+    (if (and last-modified (> (.getTime last-modified)
+                              (.getTime if-unmodified-since)))
       (response-code 412 request response state :h12)
       #(i12 resource request response (assoc state :h12 false)))))
 

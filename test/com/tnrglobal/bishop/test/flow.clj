@@ -452,7 +452,7 @@
                                {"if-unmodified-since"
                                 "Fri, 31 Dec 1999 23:59:59 GMT"}))]
         (let [response (run req res)]
-          (is (= 200 (:status response))))))
+          (is (= 412 (:status response))))))
 
     (testing "H12 If-Unmodified-Since, False"
       (let [res (resource {"text/html" "testing"}
@@ -462,7 +462,7 @@
                                {"if-unmodified-since"
                                 "Fri, 31 Dec 1999 23:59:59 GMT"}))]
         (let [response (run req res)]
-          (is (= 412 (:status response))))))
+          (is (= 200 (:status response))))))
 
     (testing "I12 No If-None-Match Header"
       (let [res (resource {"text/html" "testing"})
@@ -506,7 +506,7 @@
     (testing "L14 If-Modified-Since, Valid"
       (let [res (resource {"text/html" (fn [request]
                                          {:body (:if-modified-since request)})}
-                          {:last-modified (fn [request] (Date. 946684799000))})
+                          {:last-modified (fn [request] (Date. ))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -526,18 +526,28 @@
 
     (testing "L17 Last-Modified > If-Modified-Since, True"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date. 946684799000))})
+                          {:last-modified (fn [request] (Date.))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
                                 "Fri, 31 Dec 1969 23:59:59 GMT"}))]
            (let [response (run req res)]
+             (is (= 200 (:status response))))))
+
+        (testing "L17 Last-Modified > If-Modified-Since, False"
+      (let [res (resource {"text/html" "testing"}
+                          {:last-modified (fn [request] (Date. 946684799000))})
+            req (assoc test-request :headers
+                       (concat (:headers test-request)
+                               {"if-modified-since"
+                                "Fri, 31 Dec 2011 23:59:59 GMT"}))]
+           (let [response (run req res)]
              (is (= 304 (:status response))))))
 
-    (testing "M20 DELETE If-Umodified-Since, True"
+    (testing "M20 DELETE If-Modified-Since, True"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date. 946684799000))
+                           :last-modified (fn [request] (Date.))
                            :delete-resource (fn [request] true)})
             req (assoc (assoc test-request :request-method :delete)
                   :headers (concat (:headers test-request)
@@ -546,10 +556,10 @@
         (let [response (run req res)]
           (is (= 204 (:status response))))))
 
-    (testing "M20 DELETE If-Umodified-Since, True But No Delete"
+    (testing "M20 DELETE If-Modified-Since, True But No Delete"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date. 946684799000))
+                           :last-modified (fn [request] (Date. ))
                            :delete-resource (fn [request] false)})
             req (assoc (assoc test-request :request-method :delete)
                   :headers (concat (:headers test-request)
@@ -561,7 +571,7 @@
     (testing "M20B Delete Incomplete"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date. 946684799000))
+                           :last-modified (fn [request] (Date. ))
                            :delete-resource (fn [request] true)
                            :delete-completed? (fn [request] false)})
             req (assoc (assoc test-request :request-method :delete)
@@ -571,7 +581,7 @@
         (let [response (run req res)]
           (is (= 202 (:status response))))))
 
-    (testing "M20 DELETE If-Umodified-Since, False"
+    (testing "M20 DELETE If-Modified-Since, False"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
                            :last-modified (fn [request] (Date. 946684799000))
@@ -579,13 +589,13 @@
             req (assoc (assoc test-request :request-method :delete)
                   :headers (concat (:headers test-request)
                                    {"if-modified-since"
-                                    "Fri, 31 Dec 1974 23:59:59 GMT"}))]
+                                    "Fri, 31 Dec 2011 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (= 304 (:status response))))))
 
     (testing "O18 Multiple-Representations, False"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date. 946684799000))})
+                          {:last-modified (fn [request] (Date. ))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -595,7 +605,7 @@
 
     (testing "O18 Multiple-Representations, True"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date. 946684799000))
+                          {:last-modified (fn [request] (Date. ))
                            :multiple-representations (fn [request] true)})
             req (assoc test-request :headers
                        (concat (:headers test-request)
