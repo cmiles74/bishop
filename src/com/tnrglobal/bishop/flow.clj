@@ -98,9 +98,13 @@
 
 (defn response-ok
   "Returns a function that will return a 200 response code and add the
-  provided node (a keyword) to the state."
+  provided node (a keyword) to the state. If passed a response with an
+  existing :status value then that value is sent instead of a 200."
   [request response state node]
-  #(return-code 200 request response (assoc state node true)))
+  #(return-code (if (:status response) (:status response) 200)
+                request
+                response
+                (assoc state node true)))
 
 (defn response-code
   "Returns a function that will return a response code and add the
