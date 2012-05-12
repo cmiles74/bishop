@@ -136,6 +136,7 @@
 ;; states
 
 (defn o18b
+  "Test if there are multiple choices for this resource"
   [resource request response state]
   (if (apply-callback request resource :multiple-representations)
     (response-code 300 request response state :o18b)
@@ -143,6 +144,7 @@
 
 
 (defn o18
+  "Test if there are multiple representations for this resource"
   [resource request response state]
   (if (or (= :get (:request-method request))
           (= :head (:request-method request)))
@@ -412,7 +414,7 @@
           #(l7 resource request response (assoc state :k7 false))))
 
 (defn i13
-  "Test if 'If-None-Match: *' header exists"
+  "Test if 'If-None-Match: *' header value exists"
   [resource request response state]
   (let [if-none-match-value (header-value "if-none-match" (:headers request))]
     (if (and if-none-match-value (= "*" if-none-match-value))
@@ -499,7 +501,7 @@
       (response-code 412 request response state :g11))))
 
 (defn g9
-  "Test if 'If-Match *' header exists"
+  "Test if 'If-Match *' header value exists"
   [resource request response state]
   (let [if-match-value (header-value "if-match" (:headers request))]
     (if (and if-match-value
