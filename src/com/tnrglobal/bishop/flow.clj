@@ -180,8 +180,7 @@
 
 (defn p3
   "Test if there is a conflict"
-  [resource request response state]
-  
+  [resource request response state]  
   (if (apply-callback request resource :is-conflict?)
     (response-code 409 request response state :p3)
     #(p11 resource
