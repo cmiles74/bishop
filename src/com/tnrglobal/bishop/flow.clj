@@ -620,11 +620,10 @@
       #(b7 resource request response (assoc state :b8 true))
 
       (instance? String result)
-      #(b7 resource request
-           (assoc-in response
-                     [:headers "WWW-Authenticate"]
-                     result)
-           (assoc state :b8 result))
+      (response-code 401
+                     request
+                     (assoc-in response [:headers "WWW-Authenticate"] result)
+                     state :b8)
 
       :else
       (response-code 401 request response state :b8))))
