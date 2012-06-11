@@ -153,12 +153,16 @@
    :moved-temporarily? (fn [request] false)
 
    ;; Returns a Date with the last modified date of the resource. This
-   ;; value will be used to construct the "Last-Modified" header.
+   ;; value will be used to construct the "Last-Modified" header. You
+   ;; may use return a java.util.Date or a org.joda.time.DateTime
+   ;; instance; the former will be converted to the latter.
    :last-modified (fn [request] nil)
 
-   ;; If this resource expires, the Date of that expiration should be
+   ;; If this resource expires, the date of that expiration should be
    ;; returned. This value will be used to construct the "Expires"
-   ;; header.
+   ;; header. You may use return a java.util.Date or a
+   ;; org.joda.time.DateTime instance; the former will be converted to
+   ;; the latter.
    :expires (fn [request] nil)
 
    ;; Returns a value that will be used to construct the "ETag" header

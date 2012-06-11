@@ -10,7 +10,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string])
   (:import [java.io StringBufferInputStream]
-           [java.util Date]))
+           [org.joda.time DateTime]))
 
 (def test-request
   {:remote-addr "0:0:0:0:0:0:0:1%0"
@@ -421,7 +421,8 @@
                                {"if-unmodified-since" "Fri, 31 Dec 1999 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
-                   (= 946684799000 (.getTime (response :body))))))))
+                   (= (.compareTo (.toLocalDate (DateTime. 946684799000))
+                                  (.toLocalDate (response :body))) 0))))))
 
     (testing "H11 If-Unmodified-Since, Format #2"
       (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
@@ -430,7 +431,8 @@
                                {"if-unmodified-since" "Friday, 31-Dec-99 23:59:59 GMT"}))]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
-                   (= 946684799000 (.getTime (response :body))))))))
+                   (= (.compareTo (.toLocalDate (DateTime. 946684799000))
+                                  (.toLocalDate (response :body))) 0))))))
 
     (testing "H11 If-Unmodified-Since, Format #3"
       (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
@@ -439,7 +441,8 @@
                                {"if-unmodified-since" "Fri Dec 31 23:59:59 1999"}))]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
-                   (= 946702799000 (.getTime (response :body))))))))
+                   (= (.compareTo (.toLocalDate (DateTime. 946684799000))
+                                  (.toLocalDate (response :body))) 0))))))
 
     (testing "H11 If-Unmodified-Since, Invalid"
       (let [res (resource {"text/html" (fn [r] {:body (r :if-unmodified-since)})})
@@ -452,7 +455,7 @@
 
     (testing "H12 If-Unmodified-Since, True"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [r] (Date.))})
+                          {:last-modified (fn [r] (DateTime.))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-unmodified-since"
@@ -462,7 +465,7 @@
 
     (testing "H12 If-Unmodified-Since, False"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [r] (Date. 139410000000))})
+                          {:last-modified (fn [r] (DateTime. 139410000000))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-unmodified-since"
@@ -512,7 +515,7 @@
     (testing "L14 If-Modified-Since, Valid"
       (let [res (resource {"text/html" (fn [request]
                                          {:body (:if-modified-since request)})}
-                          {:last-modified (fn [request] (Date. ))})
+                          {:last-modified (fn [request] (DateTime. ))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -532,7 +535,7 @@
 
     (testing "L17 Last-Modified > If-Modified-Since, True"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date.))})
+                          {:last-modified (fn [request] (DateTime.))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -542,7 +545,7 @@
 
         (testing "L17 Last-Modified > If-Modified-Since, False"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date. 946684799000))})
+                          {:last-modified (fn [request] (DateTime. 946684799000))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -553,7 +556,7 @@
     (testing "M20 DELETE If-Modified-Since, True"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date.))
+                           :last-modified (fn [request] (DateTime.))
                            :delete-resource (fn [request] true)})
             req (assoc (assoc test-request :request-method :delete)
                   :headers (concat (:headers test-request)
@@ -565,7 +568,7 @@
     (testing "M20 DELETE If-Modified-Since, True But No Delete"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date. ))
+                           :last-modified (fn [request] (DateTime.))
                            :delete-resource (fn [request] false)})
             req (assoc (assoc test-request :request-method :delete)
                   :headers (concat (:headers test-request)
@@ -577,7 +580,7 @@
     (testing "M20B Delete Incomplete"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date. ))
+                           :last-modified (fn [request] (DateTime.))
                            :delete-resource (fn [request] true)
                            :delete-completed? (fn [request] false)})
             req (assoc (assoc test-request :request-method :delete)
@@ -590,7 +593,7 @@
     (testing "M20 DELETE If-Modified-Since, False"
       (let [res (resource {"text/html" "testing"}
                           {:allowed-methods (fn [request] [:delete])
-                           :last-modified (fn [request] (Date. 946684799000))
+                           :last-modified (fn [request] (DateTime. 946684799000))
                            :delete-resource (fn [request] true)})
             req (assoc (assoc test-request :request-method :delete)
                   :headers (concat (:headers test-request)
@@ -601,7 +604,7 @@
 
     (testing "O18 Multiple-Representations, False"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date. ))})
+                          {:last-modified (fn [request] (DateTime. ))})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"if-modified-since"
@@ -611,7 +614,7 @@
 
     (testing "O18 Multiple-Representations, True"
       (let [res (resource {"text/html" "testing"}
-                          {:last-modified (fn [request] (Date. ))
+                          {:last-modified (fn [request] (DateTime.))
                            :multiple-representations (fn [request] true)})
             req (assoc test-request :headers
                        (concat (:headers test-request)

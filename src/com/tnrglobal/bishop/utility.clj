@@ -6,18 +6,18 @@
         [clojure.set])
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
-           [java.util Date Locale TimeZone]
-           [java.text SimpleDateFormat]
-           [org.apache.commons.lang.time DateUtils])
+           [org.joda.time DateTime DateTimeZone]
+           [org.joda.time.format DateTimeFormat])
   (:require [com.tnrglobal.bishop.encoding :as encoding]
             [clojure.string :as string]))
 
 ;; date format to use when outputting headers
-(def HTTP-DATE-FORMAT (doto
-                          (SimpleDateFormat.
-                           "EEE, dd MMM yyyy HH:mm:ss zzz" Locale/US)
-                        (.setTimeZone (TimeZone/getTimeZone "UTC"))))
+(def HTTP-DATE-FORMAT (DateTimeFormat/forPattern "EEE, dd MMM yyyy HH:mm:ss 'GMT'"))
 
+;; valid HTTP Date header formats
+(def VALID-HTTP-DATE-FORMATS [(DateTimeFormat/forPattern "EEE, dd MMM yyyy HH:mm:ss 'GMT'")
+                              (DateTimeFormat/forPattern "EEEE, dd-MMM-yy HH:mm:ss 'GMT'")
+                              (DateTimeFormat/forPattern "EEE MMM d HH:mm:ss yyyy")])
 
 (defn key-to-upstring
   "Returns a String containing the uppercase name of the provided
@@ -211,16 +211,25 @@
   "Returns a Date for the provided text. This text should contain a
   date in one of the three valid HTTP date formats."
   [text]
-  (DateUtils/parseDate text
-                       (into-array ["EEE, dd MMM yyyy HH:mm:ss zzz"
-                                    "EEEE, dd-MMM-yy HH:mm:ss zzz"
-                                    "EEE MMM d HH:mm:ss yyyy"])))
+  (let [parsed (first (filter #(not (nil? %))
+                 (map (fn [formatter]
+                        (try
+                          (.parseDateTime formatter text)
+                          (catch Exception e)))
+                      VALID-HTTP-DATE-FORMATS)))]
+    (if parsed parsed
+        (throw (Exception. (str "Could not parse date from text '"
+                                text "'"))))))
 
 (defn header-date
   "Returns a textual date in the correct format for use in an HTTP
   header."
   [date]
-  (.format HTTP-DATE-FORMAT date))
+  (if (instance? java.util.Date date)
+    (.print HTTP-DATE-FORMAT (.withZone (DateTime. (.getTime date))
+                                        (DateTimeZone/forID "GMT")))
+    (.print HTTP-DATE-FORMAT (.withZone date
+                                        (DateTimeZone/forID "GMT")))))
 
 (defn merge-responses
   "Merges two responses into once complete response. Maps are merged

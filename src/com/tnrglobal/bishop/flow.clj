@@ -7,9 +7,8 @@
         [com.tnrglobal.bishop.utility])
   (:import [org.apache.commons.codec.digest DigestUtils]
            [java.io ByteArrayOutputStream]
-           [java.util Date Locale TimeZone]
-           [java.text SimpleDateFormat]
-           [org.apache.commons.lang.time DateUtils])
+           [org.joda.time DateTime]
+           [org.joda.time.format DateTimeFormat])
   (:require [com.tnrglobal.bishop.encoding :as encoding]
             [clojure.string :as string]))
 
@@ -300,17 +299,21 @@
 
 (defn l17
   [resource request response state]
-  (let [last-modified (apply-callback request resource :last-modified)
+  (let [last-modified-in (apply-callback request resource :last-modified)
+        last-modified (if (instance? java.util.Date last-modified-in)
+                        (DateTime. (.getTime last-modified-in))
+                        last-modified-in)
         if-modified-since (:if-modified-since request)]
-    (if (> (.getTime last-modified)
-           (.getTime if-modified-since))
+    (if (> (.compareTo (.toLocalDateTime last-modified)
+                       (.toLocalDateTime if-modified-since))
+           0)
       #(m16 resource request response (assoc state :l17 false))
       (response-code 304 request response state :l17))))
 
 (defn l15
   [resource request response state]
-  (if (> (.getTime (:if-modified-since request))
-         (.getTime (Date.)))
+  (if (> (.compareTo (.toLocalDateTime (:if-modified-since request))
+                     (.toLocalDateTime (DateTime.))) 0)
     #(m16 resource request response (assoc state :l15 true))
     #(l17 resource request response (assoc state :l15 false))))
 
@@ -420,12 +423,17 @@
 
 (defn h12
   [resource request response state]
-  (let [last-modified (apply-callback request resource :last-modified)
+  (let [last-modified-in (apply-callback request resource :last-modified)
+        last-modified (if (instance? java.util.Date last-modified-in)
+                        (DateTime. (.getTime last-modified-in))
+                        last-modified-in)
         if-unmodified-since (parse-header-date
                              (header-value "if-unmodified-since"
                                            (:headers request)))]
-    (if (and last-modified (> (.getTime last-modified)
-                              (.getTime if-unmodified-since)))
+    (if (and last-modified
+             (> (.compareTo (.toLocalDateTime last-modified)
+                            (.toLocalDateTime if-unmodified-since))
+                0))
       (response-code 412 request response state :h12)
       #(i12 resource request response (assoc state :h12 false)))))
 
