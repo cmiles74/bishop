@@ -204,26 +204,47 @@
 
       ;; yep, we're creating!
       create
-      (let [create-path (apply-callback request resource :create-path)
-            base-uri (apply-callback request resource :base-uri)]
-        (if (nil? create-path)
-          (throw (Exception. (str "Invalid resource, no create-path")))
+      (try
 
-          ;; redirect to the create path
-          (let [uri (str (if (nil? base-uri) (:uri request) base-uri)
-                         create-path)
-                request-out (merge request
-                                   {:uri uri
-                                    :request-method :put})
-                response-out (add-body (:response resource)
-                                       request-out
-                                       (merge-responses
-                                        response
-                                        {:headers {"Location" uri}}))]
-            #(response-code 303
-                            request-out
-                            response-out
-                            state :n11))))
+        (let [create-path (apply-callback request resource :create-path)
+              base-uri (apply-callback request resource :base-uri)]
+          (if (nil? create-path)
+            (throw (Exception. (str "Invalid resource, no create-path")))
+
+            ;; redirect to the create path
+            (let [uri (str (if (nil? base-uri) (:uri request) base-uri)
+                           create-path)
+                  request-out (merge request
+                                     {:uri uri
+                                      :request-method :put})
+                  response-out (add-body (:response resource)
+                                         request-out
+                                         (merge-responses
+                                          response
+                                          {:headers {"Location" uri}}))]
+
+              ;; return a 303 unless the response contains a status code
+              #(response-code (if (:status response-out)
+                                (:status response-out) 303)
+
+                              request-out
+
+                              ;; if we aren't returning a 303, remove
+                              ;; the location header
+                              (if (and (:status response-out)
+                                       (not= 303 (:status response-out)))
+                                (assoc response-out :headers
+                                       (dissoc (:headers response) "Location"))
+                                response-out)
+
+                              state :n11))))
+        (catch Exception e
+
+          ;; don't return a 303, we caught an exception
+          #(response-code 500
+                          request
+                          {:body (.getMessage e)}
+                          state :n11)))
 
       ;; not a create
       (= false create)
