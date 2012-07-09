@@ -50,7 +50,7 @@ on Ring and I don't want to pull Compojure into the mix.
 To use Bishop, add the following to your project’s “:dependencies”:
 
 ```
-[tnrglobal/bishop "1.0.5"]
+[tnrglobal/bishop "1.0.6"]
 ```
 
 ## How Does it Work?
@@ -102,8 +102,14 @@ We route incoming request for "/hello/something" to our
 "404" code to the client. Bishop will parse the route and the
 request's URI to populate the "path-info" map for your application,
 the goal is to do it in the same way that
-[Webmachine handles dispatch](http://wiki.basho.com/Webmachine-Dispatching.html). If
-you prefer another routing library, feel free to use it!
+[Webmachine handles dispatch](http://wiki.basho.com/Webmachine-Dispatching.html).
+
+If you'd like to use another routing library, you may use the
+"raw-handler" function instead. This will provide you with a Ring
+handler that simply applies the incoming request to the Bishop
+resource. See
+[the core unit tests](https://github.com/tnr-global/bishop/blob/master/test/com/tnrglobal/bishop/test/corea.clj)
+for example usage.
 
 Lastly, you can add this as your Ring handler function.
 
