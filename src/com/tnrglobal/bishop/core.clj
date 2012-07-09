@@ -142,6 +142,17 @@
         :else
         {:status 404 :body "Resource not found"}))))
 
+(defn raw-handler
+  "Creates a new Bishop handler that will process incoming requests by
+  applying them to the provided resource. The provided handler
+  presumes that routing has already been handled (i.e. by using
+  another middleware such as Moustache."
+  [resource]
+
+  ;; return a ring handler function that processes the request
+  (fn [request]
+    (run request resource)))
+
 (defn resource
   "Defines a new resource, these come in two different forms:
 
