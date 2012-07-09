@@ -68,20 +68,25 @@
       ;; the resource contains a map of content types and return
       ;; values or functions
       (map? resource)
-      (let [responder (resource (:acceptable-type request))]
+      (let [responder (resource (:acceptable-type request))
+            response-out (assoc-in response [:headers "content-type"]
+                                   (:acceptable-type request))]
         (cond
 
           ;; invoke the response function
           (fn? responder)
-          (merge-responses response (responder request))
+          (merge-responses response-out
+                           (responder request))
 
           ;; merge bishop's response with the provided map
           (map? responder)
-          (merge-responses response responder)
+          (merge-responses response-out
+                           responder)
 
           ;; return the response value
           :else
-          (assoc response :body responder))))
+          (merge-responses response-out
+                 {:body responder}))))
 
     ;; return the response as-is
     response))
@@ -148,9 +153,9 @@
 
     ;; add our caching headers and the response body to the response
     (let [headers (caching-headers resource request response)
-          response-out (assoc
+          response-out (merge-responses
                         (add-body (:response resource) request response)
-                        :headers headers)]
+                        headers)]
 
       ;; the reponse indicates a specific status code, bail now
       (if (:status response-out)
@@ -369,8 +374,8 @@
       (response-code 307
                      request
                      (assoc response :headers
-                            (assoc (:headers response)
-                              "location" moved-temp))
+                            (merge (:headers response)
+                                   {"location" moved-temp}))
                      state :l5)
       #(m5 resource request response (assoc state :l5 false)))))
 
@@ -399,8 +404,8 @@
       (response-code 301
                      request
                      (assoc response :headers
-                            (assoc (:headers response)
-                              "location" moved-permanently))
+                            (merge (:headers response)
+                                   {"location" moved-permanently}))
                      state :k5)
       #(l5 resource request response (assoc state :k5 false)))))
 
@@ -431,8 +436,8 @@
       (response-code 301
                      request
                      (assoc response :headers
-                            (assoc (:headers response)
-                              "location" moved-perm))
+                            (merge (:headers response)
+                                   {"location" moved-perm}))
                      state :i4)
       #(p3 resource request response (assoc state :i4 false)))))
 
@@ -516,8 +521,9 @@
   (let [vary (into (apply-callback request resource :variances)
                    (variances request))
         response-varied (assoc response :headers
-                               (merge (:headers response)
-                                       {"vary" (apply str (interpose ", " vary))}))]
+                               (merge
+                                (:headers response)
+                                {"vary" (apply str (interpose ", " vary))}))]
 
     (decide #(apply-callback request resource :resource-exists?)
             true
@@ -607,8 +613,8 @@
   (if (= :options (:request-method request))
     (response-ok request
                   (assoc response :headers
-                         (concat (:headers response)
-                                 (#(apply-callback request resource :options))))
+                         (merge (:headers response)
+                                (#(apply-callback request resource :options))))
                   state :b3)
     #(c3 resource request response (assoc state :b3 false))))
 
