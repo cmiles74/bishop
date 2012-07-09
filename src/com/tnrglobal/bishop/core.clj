@@ -37,12 +37,14 @@
   ;; we only need the route
   (let [route (first route-and-handler)]
 
-       ;; the route can only match if it has the same number of tokens as
-       ;; the URI or if it has the same number or less and it's last token
-       ;; is a wildcard
+       ;; the route matches if it has the name number of tokens as the
+       ;; URI or less tokens than the URI and ends with "*", or if the
+       ;; URI tokens are the empty set and the route is the set of "*"
        (if (or (= (count route) (count uri-tokens))
                (and (>= (count uri-tokens) (count route))
-                    (= "*" (last route))))
+                    (= "*" (last route)))
+               (and (not (seq uri-tokens))
+                    (= ["*"] route)))
 
          ;; if the route is an exact match or consists of only the wildcard
          ;; token, no processing is necessary
