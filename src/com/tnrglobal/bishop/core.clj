@@ -38,19 +38,36 @@
   (let [route (first route-and-handler)]
 
        ;; the route matches if it has the name number of tokens as the
-       ;; URI or less tokens than the URI and ends with "*", or if the
-       ;; URI tokens are the empty set and the route is the set of "*"
+       ;; URI or less tokens than the URI and ends with "*". If we
+       ;; have a URI that tokenized to the empty set, it may match
+       ;; either the wildcard route ["*"] or the root route [].
        (if (or (= (count route) (count uri-tokens))
                (and (>= (count uri-tokens) (count route))
                     (= "*" (last route)))
                (and (not (seq uri-tokens))
+                    (= [] route))
+               (and (not (seq uri-tokens))
                     (= ["*"] route)))
 
-         ;; if the route is an exact match or consists of only the wildcard
-         ;; token, no processing is necessary
-         (if (or (= route uri-tokens) (= route ["*"]))
+
+         (cond
+
+           ;; the route is an exact match, we don't need to perform
+           ;; any more processing
+           (= route uri-tokens)
            {:path-tokens uri-tokens}
 
+           ;; the URI is the empty set as is the route, no more
+           ;; processing is needed
+           (and (not (seq uri-tokens)) (= route []))
+           {:path-tokens uri-tokens}
+
+           ;; the URI is the empty set and the route is the wildcard,
+           ;; no more processing is needed
+           (or (not (seq uri-tokens)) (= route ["*"]))
+           {:path-tokens uri-tokens}
+
+           :else
            ;; attempt to match the route to the URI tokens
            (loop [rtoks route utoks (concat uri-tokens [nil]) info {}]
 

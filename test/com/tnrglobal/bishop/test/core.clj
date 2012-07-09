@@ -16,6 +16,8 @@
                                 {:body (str "Hello, " (:name (:path-info r))
                                             "!")})})
    ["greet"] (resource {"text/plain" "Hello, Somebody Someone!"})
+   ["greeting" "*"] (resource {"text/plain" "Hola!"})
+   [] (resource {"text/plain" "Welcome to Test Resource"})
    ["*"] (resource {"text/plain" "Resources: /greet, /greet/:name"})})
 
 (def test-handler-webmachine (handler test-routes-webmachine))
@@ -47,9 +49,23 @@
                                              :headers {"accept" "*/*"}})]
       (is (= "Hello, Somebody Someone!" (:body response)))))
 
-  (testing "No Resource (Matches Root)"
+  (testing "Route Ends with Wildcard"
+    (let [response (test-handler-webmachine {:request-method :get
+                                             :uri "/greeting/Howard"
+                                             :scheme "http"
+                                             :headers {"accept" "*/*"}})]
+      (is (= "Hola!" (:body response)))))
+
+  (testing "Empty Route (Maps to Root)"
     (let [response (test-handler-webmachine {:request-method :get
                                              :uri "/"
+                                             :scheme "http"
+                                             :headers {"accept" "*/*"}})]
+      (is (= "Welcome to Test Resource" (:body response)))))
+
+  (testing "Random Route (Maps to Wildcard)j"
+    (let [response (test-handler-webmachine {:request-method :get
+                                             :uri "/somewhere"
                                              :scheme "http"
                                              :headers {"accept" "*/*"}})]
       (is (= "Resources: /greet, /greet/:name" (:body response))))))
