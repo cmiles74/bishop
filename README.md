@@ -50,7 +50,7 @@ on Ring and I don't want to pull Compojure into the mix.
 To use Bishop, add the following to your project’s “:dependencies”:
 
 ```
-[tnrglobal/bishop "1.0.6"]
+[tnrglobal/bishop "1.0.7"]
 ```
 
 ## How Does it Work?
@@ -130,8 +130,8 @@ resource. For instance, you might prefer
     (def moustache-handler
 	  (moustache/app
 	    ["hello" name] hello-resource
-		[&] (raw-handler
-		      (bishop/resource {"*/*" (fn [r] {:status 404})}))))
+		[&] (bishop/raw-handler
+		      (bishop/halt-resource 404))))
 
 	(def app
 	  (-> moustache-handler))

@@ -203,9 +203,12 @@
 
 (defn halt-resource
   "Returns a resource that halt processing and returns the specified
-  status code."
-  [status]
-  (resource {"*/*" (fn [request] {:status status})}))
+  status code. You may optionally provide a response map that will be
+  merged into the outgoing response (for instance, if you wanted to
+  provide a body)."
+  [status & response-map]
+  (resource {"*/*" (fn [request] (merge {:status status}
+                                        (first response-map)))}))
 
 (defn error-resource
   "Returns a resource that returns a 500 status and the provided term

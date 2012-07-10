@@ -18,7 +18,7 @@
    ["greet"] (resource {"text/plain" "Hello, Somebody Someone!"})
    ["greeting" "*"] (resource {"text/plain" "Hola!"})
    [] (resource {"text/plain" "Welcome to Test Resource"})
-   ["*"] (resource {"text/plain" "Resources: /greet, /greet/:name"})})
+   ["*"] (halt-resource 404 {:body (str "Dude, bogus page!")})})
 
 (def test-handler-webmachine (handler test-routes-webmachine))
 
@@ -30,8 +30,7 @@
                    (resource {"text/plain"
                               (fn [r]
                                 {:body (str "Hello, " name "!")})}))
-   [&] (raw-handler
-        (resource {"text/plain" "Resources: /greet, /greet/:name"}))))
+   [&] (raw-handler (halt-resource 404))))
 
 (deftest routing-webmachine
 
@@ -68,7 +67,7 @@
                                              :uri "/somewhere"
                                              :scheme "http"
                                              :headers {"accept" "*/*"}})]
-      (is (= "Resources: /greet, /greet/:name" (:body response))))))
+      (is (= "Dude, bogus page!" (:body response))))))
 
 (deftest routing-moustache
 
@@ -91,4 +90,4 @@
                                             :uri "/"
                                             :scheme "http"
                                             :headers {"accept" "*/*"}})]
-      (is (= "Resources: /greet, /greet/:name" (:body response))))))
+      (is (= 404 (:status response))))))
