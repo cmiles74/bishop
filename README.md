@@ -14,7 +14,7 @@ values. This library was designed to be used with
 [Ring](https://github.com/mmcgrana/ring) and should work with any Ring
 middle-ware. Bishop provides its own routing mechanism but you can use
 another if you like (for instance
-[Clout](https://github.com/weavejester/clout)).
+[Moustache](https://github.com/cgrand/moustache)).
 
 This is our first release of this library and there may be bugs that
 need squashing, please
