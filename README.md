@@ -104,19 +104,46 @@ request's URI to populate the "path-info" map for your application,
 the goal is to do it in the same way that
 [Webmachine handles dispatch](http://wiki.basho.com/Webmachine-Dispatching.html).
 
-If you'd like to use another routing library, you may use the
-"raw-handler" function instead. This will provide you with a Ring
-handler that simply applies the incoming request to the Bishop
-resource. See
-[the core unit tests](https://github.com/tnr-global/bishop/blob/master/test/com/tnrglobal/bishop/test/corea.clj)
-for example usage.
-
 Lastly, you can add this as your Ring handler function.
 
 ```
 (def app
   (-> (bishop/handler routes)))
 ```
+
+## Using Another Routing Library
+
+
+If you'd like to use another routing library, you may use the
+"raw-handler" function instead. This will provide you with a Ring
+handler that simply applies the incoming request to the Bishop
+resource. For instance, you might prefer
+[Moustache](https://github.com/cgrand/moustache).
+
+    (def hello-resource
+	  (bishop/raw-handler
+	    (bishop/resource {"text/html"
+		                  (fn [request]
+						    (hiccup/html
+							  [:p (hello name)]))})))
+
+    (def moustache-handler
+	  (moustache/app
+	    ["hello" name] hello-resource
+		[&] (raw-handler
+		      (bishop/resource {"*/*" (fn [r] {:status 404})}))))
+
+	(def app
+	  (-> moustache-handler))
+
+Instead of asking Bishop to provide a resource equipped to handle it's
+own routing, instead we ask for a "raw" handler that expects routing
+to already have been handled. We can then plug-in Moustache and
+provide our Bishop resources as end-points. More examples are
+available in the
+[unit tests](https://github.com/tnr-global/bishop/blob/master/test/com/tnrglobal/bishop/test/core.clj#L25).
+
+## What Else Does it Do?
 
 Aside from parsing the URI and matching it to the route, Bishop is
 doing a lot of other work as well. It covers all of the behavior in
