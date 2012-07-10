@@ -30,11 +30,15 @@
   [resource request response]
   (let [etag (apply-callback request resource :generate-etag)
         expires (apply-callback request resource :expires)
-        modified (apply-callback request resource :last-modified)]
-    (merge (:headers response)
-           (if etag {"etag" (make-quoted etag)})
-           (if expires {"expires" (header-date expires)})
-           (if modified {"last-modified" (header-date modified)}))))
+        modified (apply-callback request resource :last-modified)
+        response-out {:headers (merge (if etag {"etag" (make-quoted etag)})
+                                      (if expires {"expires"
+                                                   (header-date expires)})
+                                      (if modified {"last-modified"
+                                                    (header-date modified)}))}]
+    (if (not (nil? (:headers response-out)))
+      (merge-responses response response-out)
+      response)))
 
 (defn decide
   "Calls the provided test function (test-fn). If the function's
@@ -170,21 +174,21 @@
 
 (defn o20
   "Test if response includes an entity"
-  [resource request response state]  
+  [resource request response state]
   (if (nil? (:body response))
     (response-code 204 request response state :o20)
     #(o18 resource request response (assoc state :o20 false))))
 
 (defn p11
   "Test if this is a new resource"
-  [resource request response state]  
+  [resource request response state]
   (if (not (some #(= "Location" %) (keys (:headers response))))
     #(o20 resource request response (assoc state :p11 true))
     (response-code 201 request response state :p11)))
 
 (defn p3
   "Test if there is a conflict"
-  [resource request response state]  
+  [resource request response state]
   (if (apply-callback request resource :is-conflict?)
     (response-code 409 request response state :p3)
     #(p11 resource
@@ -556,10 +560,9 @@
   ;; this to our response
   (let [vary (into (apply-callback request resource :variances)
                    (variances request))
-        response-varied (assoc response :headers
-                               (merge
-                                (:headers response)
-                                {"vary" (apply str (interpose ", " vary))}))]
+        response-varied (merge-responses
+                         response
+                         {:headers {"vary" (apply str (interpose ", " vary))}})]
 
     (decide #(apply-callback request resource :resource-exists?)
             true
