@@ -50,7 +50,7 @@ on Ring and I don't want to pull Compojure into the mix.
 To use Bishop, add the following to your project’s “:dependencies”:
 
 ```
-[tnrglobal/bishop "1.0.8"]
+[tnrglobal/bishop "1.0.9"]
 ```
 
 ## How Does it Work?
@@ -83,8 +83,8 @@ to generate our JSON output.
         [:p (hello (:name (:path-info request)))]))}
 
     {"text/json" (fn [request]
-      (clj-json/generate-string
-        {:message (hello (:name (:path-info request)))}))}))
+      {:body (clj-json/generate-string
+               {:message (hello (:name (:path-info request)))}))}))
 ```
 
 This resource can return either HTML or JSON content, depending on the
