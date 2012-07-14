@@ -299,8 +299,6 @@
                         "utf-8,iso-8859-1;q=0.8")
           req2 (assoc-in test-request [:headers "accept-charset"]
                          "*")]
-      (println (run req1 res))
-      (println (run req2 res))
       (is (and (= 200 (:status (run req1 res)))))
       (is (and (= 200 (:status (run req2 res)))))))
 
@@ -357,16 +355,18 @@
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
-                   (= "accept" ((:headers response) "Vary")))))))
+                   (= "accept-charset, accept"
+                      ((:headers response) "Vary")))))))
 
     (testing "G7 Header"
       (let [res (resource {"text/html" "testing"})
             req (assoc test-request :headers
                        (concat (:headers test-request)
                                {"accept-encoding" "huzzah,*;q=0.8"}
-                               {"accept-charset" "utf8,*;q=0.8"}
+                               {"accept-charset" "utf-8,*;q=0.8"}
                                {"accept-language" "en,*;q=0.8"}
-                               {"accept" "text/html,application/xhtml+xml;q=0.8"}))]
+                               {"accept"
+                                "text/html,application/xhtml+xml;q=0.8"}))]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= "accept-encoding, accept-charset, accept-language, accept"
