@@ -1,4 +1,4 @@
-(defproject tnrglobal/bishop "1.0.8"
+(defproject tnrglobal/bishop "1.0.9"
   :description "A Webmachine-like REST library"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/tools.logging "0.2.3"]
@@ -8,5 +8,5 @@
                  [commons-lang "2.6"]]
   :profiles {:dev
              {:dependencies [[ring/ring-devel "1.0.1"]
-                             [net.cgrand/moustache "1.1.0"]
-                             [swank-clojure/swank-clojure "1.3.3"]]}})
+                             [net.cgrand/moustache "1.1.0"]]
+              :plugins [[lein-swank "1.4.4"]]}})

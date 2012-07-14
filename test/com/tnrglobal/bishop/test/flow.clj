@@ -296,9 +296,11 @@
   (testing "E6 Available"
     (let [res (resource {"text/html" (fn [r] nil)})
           req1 (assoc-in test-request [:headers "accept-charset"]
-                        "utf8,iso-8859-1;q=0.8")
+                        "utf-8,iso-8859-1;q=0.8")
           req2 (assoc-in test-request [:headers "accept-charset"]
                          "*")]
+      (println (run req1 res))
+      (println (run req2 res))
       (is (and (= 200 (:status (run req1 res)))))
       (is (and (= 200 (:status (run req2 res)))))))
 
@@ -311,14 +313,16 @@
     ;; acceptable encoding?
 
     (testing "F6 Unspecified"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
+      (let [res (resource {"text/html"
+                           (fn [r] {:body (:acceptable-encoding r)})})
             req test-request]
         (let [response (run req res)]
           (is (and (= 200 (:status response))
                    (= nil (:body response)))))))
 
     (testing "F6 Valid"
-      (let [res (resource {"text/html" (fn [r] {:body (:acceptable-encoding r)})})
+      (let [res (resource {"text/html"
+                           (fn [r] {:body (:acceptable-encoding r)})})
             req (assoc-in test-request [:headers "accept-encoding"]
                           "identity,*;q=0.8")]
         (let [response (run req res)]

@@ -73,8 +73,15 @@
       ;; values or functions
       (map? resource)
       (let [responder (resource (:acceptable-type request))
-            response-out (assoc-in response [:headers "content-type"]
-                                   (:acceptable-type request))]
+
+            ;; associate our content-type and character set with the
+            ;; outgoing response
+            response-out (assoc-in response
+                                   [:headers "content-type"]
+                                   (str (:acceptable-type request) "; "
+                                        "charset="
+                                        (:acceptable-charset request)))]
+
         (cond
 
           ;; invoke the response function
@@ -612,7 +619,14 @@
   [resource request response state]
   (if (header-value "accept-charset" (:headers request))
     #(e6 resource request response (assoc state :e5 true))
-    #(f6 resource request response (assoc state :e5 false))))
+
+    ;; the client hasn't provided an accept-charset header, we'll use
+    ;; the first character set provided by the resource
+    #(f6 resource
+         (assoc request :acceptable-charset
+                (first (apply-callback request resource :charsets-provided)))
+         response
+         (assoc state :e5 false))))
 
 (defn d5
   "Test if acceptable language is available"

@@ -107,7 +107,7 @@
    ;; Returns a sequence of character sets provided by this
    ;; resource. Correctly returning the appropriate character set is
    ;; handled by the resource.
-   :charsets-provided (fn [request] ["utf8"])
+   :charsets-provided (fn [request] ["utf-8"])
 
    ;; Returns a sequence of languages provided by the
    ;; resource. Correctly returning content with the correct language
