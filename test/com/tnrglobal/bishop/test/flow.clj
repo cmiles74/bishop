@@ -615,6 +615,22 @@
       (let [response (run req res)]
         (is (= 202 (:status response))))))
 
+  (testing "M20B Delete Incomplete, With Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:allowed-methods (fn [request] [:delete])
+                         :last-modified (fn [request] (DateTime.))
+                         :delete-resource (fn [request] true)
+                         :delete-completed? (fn [request]
+                                              [false
+                                               {:body "Still thinking..."}])})
+          req (assoc (assoc test-request :request-method :delete)
+                :headers (concat (:headers test-request)
+                                 {"if-modified-since"
+                                  "Fri, 31 Dec 2011 23:59:59 GMT"}))]
+      (let [response (run req res)]
+        (is (and (= 202 (:status response))
+                 (= "Still thinking..." (:body response)))))))
+
   (testing "M20 DELETE If-Modified-Since, False"
     (let [res (resource {"text/html" "testing"}
                         {:allowed-methods (fn [request] [:delete])
@@ -771,6 +787,21 @@
       (let [response (run req res)]
         (is (= 410 (:status response))))))
 
+    (testing "N5, POST to Missing Resource, Not Allowed, Body Present"
+    (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                        {:allowed-methods (fn [request] [:post])
+                         :allow-missing-post? (fn [request]
+                                                [false
+                                                 {:headers {"content-type"
+                                                            "text/plain"}
+                                                  :body "No way, buddy!"}])
+                         :resource-exists? (fn [request] false)
+                         :previously-existed? (fn [request] true)})
+          req (assoc test-request :request-method :post)]
+      (let [response (run req res)]
+        (is (and (= 410 (:status response))
+                 (= "No way, buddy!" (:body response)))))))
+
   (testing "I4, PUT to Moved Permanently"
     (let [res (resource {"text/html" (fn [request] {:body "testing"})}
                         {:allowed-methods (fn [request] [:put])
@@ -787,4 +818,20 @@
                          :is-conflict? (fn [request] true)})
           req (assoc test-request :request-method :put)]
       (let [response (run req res)]
-        (is (= 409 (:status response)))))))
+        (is (= 409 (:status response))))))
+
+  (testing "P3, PUT, Conflict, 409 Body"
+    (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                        {:allowed-methods (fn [request] [:put])
+                         :resource-exists? (fn [request] false)
+                         :is-conflict?
+                         (fn [request]
+                           {:headers {"content-type" "text/plain"}
+                            :body "Doh! We have one of those already."})})
+          req (assoc test-request :request-method :put)]
+      (let [response (run req res)]
+        (is (and (= 409 (:status response))
+                 (= "text/plain; charset=utf-8"
+                    ((:headers response) "Content-Type"))
+                 (= "Doh! We have one of those already."
+                    (:body response))))))))

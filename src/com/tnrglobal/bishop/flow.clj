@@ -17,6 +17,72 @@
   [request resource callback]
   ((callback (:handlers resource)) request))
 
+(defn apply-merge-callback
+  "Applies the specified callback to the provided resource. If the
+  callback returns a response map then that map is merged with the
+  provided response and returned. If the callback returns a sequence,
+  the first item in that sequence is our boolean result and the
+  remainder is treated as the respons boyd. If the callback returns
+  boolean true or false, it is simply wrapped in a sequence."
+  [request resource response callback]
+  (let [result (apply-callback request resource callback)]
+    (cond
+
+      ;; map result is the same as true
+      (and result (map? result))
+      [true (merge-responses response result)]
+
+      ;; sequence result, the first item is our result
+      (and result (coll? result))
+      [(first result) (merge-responses response (second result))]
+
+      (and result (not (map? result)))
+      [true response]
+
+      :else
+      [false response])))
+
+(defn apply-merge-callback-decide
+  "Applies the specified callback to the provided resource. If the
+  callback returns true or a response map, the true-fn will be called
+  with either the current response map or the current response map
+  merged with the result of the callback function. If the callback
+  function returns false, the the false-fn will be called with the
+  provided response."
+  [request resource response callback true-fn false-fn]
+  (let [result (apply-merge-callback request resource response callback)]
+    (cond
+
+      (and (coll? result) (first result))
+      (true-fn (second result))
+
+      (coll? result)
+      (false-fn (second result))
+
+      :else
+      (false-fn response))))
+
+(defn decide
+  "Calls the provided test function (test-fn). If the function's
+  return value matches the true-condition value then the true-fn is
+  returned. If the test function returns a number (indicating an HTTP
+  response code) then that response code is returned. In all other
+  cases the false-fn is returned. If no true-condition value is
+  supplied then boolean true is used."
+  ([test-fn true-condition true-fn false-fn]
+
+     (let [result (test-fn)]
+       (cond (= true-condition result)
+             true-fn
+
+             (number? result)
+             result
+
+             :else
+             false-fn)))
+  ([test-fn true-fn false-fn]
+     (decide test-fn true true-fn false-fn)))
+
 (defn encoding-function
   "Returns the encoding function with the assigned key for the
   provided request and resource."
@@ -40,26 +106,58 @@
       (merge-responses response response-out)
       response)))
 
-(defn decide
-  "Calls the provided test function (test-fn). If the function's
-  return value matches the true-condition value then the true-fn is
-  returned. If the test function returns a number (indicating an HTTP
-  response code) then that response code is returned. In all other
-  cases the false-fn is returned. If no true-condition value is
-  supplied then boolean true is used."
-  ([test-fn true-condition true-fn false-fn]
+(defn set-content-type
+  "Calculates and sets the content type for the provided request and
+  response, a new response map is returned. If the negotiation of the
+  content type hasn't yet been determined, then \"text/plain\" is
+  used. If the negotiation of the character set has not yet been
+  determined then the first character set provided by the resource is
+  used."
+  [resource request response]
+  (let [acceptable-type (cond
 
-     (let [result (test-fn)]
-       (cond (= true-condition result)
-             true-fn
+                          ;; if the content type header has been
+                          ;; manually set, it takes precedence
+                          (and (:headers response)
+                               ((:headers response) "content-type"))
+                          (first (string/split
+                                  ((:headers response) "content-type") #";"))
 
-             (number? result)
-             result
 
-             :else
-             false-fn)))
-  ([test-fn true-fn false-fn]
-     (decide test-fn true true-fn false-fn)))
+                          ;; the negotiated type is the next best
+                          (:acceptable-type request)
+                          (:acceptable-type request)
+
+                          ;; we have nothing, go with plain text
+                          :else
+                          "text/plain")
+
+        acceptable-charset (cond
+
+                             ;; if the content type header has a
+                             ;; character set, use that
+                             (and (:headers response)
+                                  ((:headers response) "content-type")
+                                  (re-find #"charset=(.+);?"
+                                           ((:headers response)
+                                            "content-type")))
+                             (second (re-find #"charset=(.+);?"
+                                              ((:headers response)
+                                               "content-type")))
+
+                             ;; use the negotiated character set
+                             (:acceptable-charset request)
+                             (:acceptable-charset request)
+
+                             ;; use the first provided character set
+                             :else
+                             (first (apply-callback request
+                                                    resource
+                                                    :charsets-provided)))]
+    (assoc-in response
+              [:headers "content-type"]
+              (str acceptable-type "; "
+                   "charset=" acceptable-charset))))
 
 (defn add-body
   "Calculates and appends the body to the provided request."
@@ -76,11 +174,7 @@
 
             ;; associate our content-type and character set with the
             ;; outgoing response
-            response-out (assoc-in response
-                                   [:headers "content-type"]
-                                   (str (:acceptable-type request) "; "
-                                        "charset="
-                                        (:acceptable-charset request)))]
+            response-out (set-content-type resource request response)]
 
         (cond
 
@@ -109,13 +203,14 @@
   flow. This function represents the end of the run."
   [code request response state]
   [code request (assoc (assoc response :status code)
-                  :headers (headers-to-titlecase (:headers response))) state])
+                  :headers (headers-to-titlecase
+                            (:headers response))) state])
 
 (defn response-ok
   "Returns a function that will return a 200 response code and add the
   provided node (a keyword) to the state. If passed a response with an
   existing :status value then that value is sent instead of a 200."
-  [request response state node]
+  [resource request response state node]
   #(return-code (if (:status response) (:status response) 200)
                 request
                 response
@@ -123,9 +218,10 @@
 
 (defn response-code
   "Returns a function that will return a response code and add the
-  provide node (a keyword) to the state."
-  [code request response state node]
-  #(return-code code request response (assoc state node false)))
+  provided node (a keyword) to the state."
+  [resource code request response state node]
+  (let [response-out (set-content-type resource request response)]
+    #(return-code code request response-out (assoc state node false))))
 
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
@@ -153,9 +249,10 @@
 (defn o18b
   "Test if there are multiple choices for this resource"
   [resource request response state]
-  (if (apply-callback request resource :multiple-representations)
-    (response-code 300 request response state :o18b)
-    (response-ok request response state :o18b)))
+  (apply-merge-callback-decide
+   request resource response :multiple-representations
+   #(response-code resource 300 request % state :o18b)
+   #(response-ok resource request % state :o18b)))
 
 
 (defn o18
@@ -172,7 +269,12 @@
 
       ;; the reponse indicates a specific status code, bail now
       (if (:status response-out)
-        (response-code (:status response-out) request response-out state :o18)
+        (response-code resource
+                       (:status response-out)
+                       request
+                       response-out
+                       state
+                       :o18)
 
         ;; processing continues normally
         #(o18b resource request response-out (assoc state :o18 true))))
@@ -183,7 +285,7 @@
   "Test if response includes an entity"
   [resource request response state]
   (if (nil? (:body response))
-    (response-code 204 request response state :o20)
+    (response-code resource 204 request response state :o20)
     #(o18 resource request response (assoc state :o20 false))))
 
 (defn p11
@@ -191,27 +293,29 @@
   [resource request response state]
   (if (not (some #(= "Location" %) (keys (:headers response))))
     #(o20 resource request response (assoc state :p11 true))
-    (response-code 201 request response state :p11)))
+    (response-code resource 201 request response state :p11)))
 
 (defn p3
   "Test if there is a conflict"
   [resource request response state]
-  (if (apply-callback request resource :is-conflict?)
-    (response-code 409 request response state :p3)
-    #(p11 resource
-          request
-          (add-body (:response resource) request response)
-          (assoc state :p3 false))))
+  (apply-merge-callback-decide
+   request resource response :is-conflict?
+   #(response-code resource 409 request % state :p3)
+   #(p11 resource
+         request
+         (add-body (:response resource) request %)
+         (assoc state :p3 false))))
 
 (defn o14
   "Test if there is a conflict"
   [resource request response state]
-  (if (apply-callback request resource :is-conflict?)
-    (response-code 409 request response state :o14)
-    #(p11 resource
-          request
-          (add-body (:response resource) request response)
-          (assoc state :o14 false))))
+  (apply-merge-callback-decide
+   request resource response :is-conflict?
+   #(response-code resource 409 request % state :o14)
+   #(p11 resource
+         request
+         (add-body (:response resource) request %)
+         (assoc state :o14 false))))
 
 (defn o16
   "Test if this is an HTTP PUT request"
@@ -248,7 +352,8 @@
                                           {:headers {"Location" uri}}))]
 
               ;; return a 303 unless the response contains a status code
-              #(response-code (if (:status response-out)
+              #(response-code resource
+                              (if (:status response-out)
                                 (:status response-out) 303)
 
                               request-out
@@ -265,7 +370,8 @@
         (catch Exception e
 
           ;; don't return a 303, we caught an exception
-          #(response-code 500
+          #(response-code resource
+                          500
                           request
                           {:body (.getMessage e)}
                           state :n11)))
@@ -277,7 +383,8 @@
 
           ;; status code returned
           (number? process-post)
-          (response-code process-post
+          (response-code resource
+                         process-post
                          request
                          response
                          state :n11)
@@ -306,18 +413,18 @@
 (defn n5
   "Test if POST to missing resource is allowed"
   [resource request response state]
-  (decide #(apply-callback request resource :allow-missing-post?)
-          true
-          #(n11 resource request response (assoc state :n5 true))
-          (response-code 410 request response state :n5)))
+  (apply-merge-callback-decide
+   request resource response :allow-missing-post?
+   #(n11 resource request % (assoc state :n5 true))
+   #(response-code resource 410 request % state :n5)))
 
 (defn m20b
   "Test if the DELETE complete"
   [resource request response state]
-  (let [delete-complete (apply-callback request resource :delete-completed?)]
-    (if delete-complete
-      #(o20 resource request response (assoc state :m20b true))
-      (response-code 202 request response state :m20b))))
+  (apply-merge-callback-decide
+   request resource response :delete-completed?
+   #(o20 resource request % (assoc state :m20b true))
+   #(response-code resource 202 request % state :m20b)))
 
 (defn m20
   "Test if the delete was successfully enacted immediately"
@@ -325,7 +432,7 @@
   (let [delete-resource (apply-callback request resource :delete-resource)]
     (if delete-resource
       #(m20b resource request response (assoc state :m20 true))
-      (response-code 500 request response state :m20))))
+      (response-code resource 500 request response state :m20))))
 
 (defn m16
   "Test if this is an HTTP DELETE request"
@@ -340,14 +447,14 @@
   (decide #(apply-callback request resource :allow-missing-post?)
           true
           #(n11 resource request response (assoc state :m7 true))
-          (response-code 404 request response state :m7)))
+          (response-code resource 404 request response state :m7)))
 
 (defn m5
   "Test if this is an HTTP POST request"
   [resource request response state]
   (if (= :post (:request-method request))
     #(n5 resource request response (assoc state :m5 true))
-    (response-code 410 resource request response :m5)))
+    (response-code resource 410 resource request response :m5)))
 
 (defn l17
   "Test if Last-Modified is later than If-Modified-Since"
@@ -361,7 +468,7 @@
                        (.toLocalDateTime if-modified-since))
            0)
       #(m16 resource request response (assoc state :l17 false))
-      (response-code 304 request response state :l17))))
+      (response-code resource 304 request response state :l17))))
 
 (defn l15
   "Test if If-Modified-Since is later than now"
@@ -396,14 +503,14 @@
   [resource request response state]
   (if (= :post (:request-method request))
     #(m7 resource request response (assoc state :l7 true))
-    (response-code 404 request response state :l7)))
+    (response-code resource 404 request response state :l7)))
 
 (defn l5
   "Test if resource moved temporarily"
   [resource request response state]
   (let [moved-temp (apply-callback request resource :moved-temporarily?)]
     (if moved-temp
-      (response-code 307
+      (response-code resource 307
                      request
                      (assoc response :headers
                             (merge (:headers response)
@@ -416,8 +523,8 @@
   [resource request response state]
   (if (or (= :get (:request-method request))
           (= :head (:request-method request)))
-    (response-code 304 request response state :j18)
-    (response-code 412 request response state :j18)))
+    (response-code resource 304 request response state :j18)
+    (response-code resource 412 request response state :j18)))
 
 (defn k13
   "Test if Etag is in If-None-Match header"
@@ -436,7 +543,8 @@
   [resource request response state]
   (let [moved-permanently (apply-callback request resource :moved-permanently?)]
     (if moved-permanently
-      (response-code 301
+      (response-code resource
+                     301
                      request
                      (assoc response :headers
                             (merge (:headers response)
@@ -472,7 +580,8 @@
   [resource request response state]
   (let [moved-perm (apply-callback request resource :moved-permanently?)]
     (if moved-perm
-      (response-code 301
+      (response-code resource
+                     301
                      request
                      (assoc response :headers
                             (merge (:headers response)
@@ -501,7 +610,7 @@
              (> (.compareTo (.toLocalDateTime last-modified)
                             (.toLocalDateTime if-unmodified-since))
                 0))
-      (response-code 412 request response state :h12)
+      (response-code resource 412 request response state :h12)
       #(i12 resource request response (assoc state :h12 false)))))
 
 (defn h11
@@ -529,7 +638,7 @@
   (let [if-match-value (header-value "if-match" (:headers request))]
     (if (and if-match-value
              (= "*" (make-unquoted if-match-value)))
-      (response-code 412 request response state :h7)
+      (response-code resource 412 request response state :h7)
       #(i7 resource request response (assoc state :h7 false)))))
 
 (defn g11
@@ -542,7 +651,7 @@
         etag (apply-callback request resource :generate-etag)]
     (if (some #(= etag %) if-match-etags)
       #(h10 resource request response (assoc state :g11 true))
-      (response-code 412 request response state :g11))))
+      (response-code resource 412 request response state :g11))))
 
 (defn g9
   "Test if 'If-Match *' header value exists"
@@ -584,7 +693,7 @@
                     (apply-callback request resource :encodings-provided)
                     headers)]
     (if (empty? acceptable)
-      (response-code 406 request response state :f7)
+      (response-code resource 406 request response state :f7)
       #(g7 resource
            (assoc request :acceptable-encoding acceptable)
            response
@@ -612,7 +721,7 @@
            (assoc request :acceptable-charset acceptable)
            response
            (assoc state :e6 true))
-      (response-code 406 request response state :e6))))
+      (response-code resource 406 request response state :e6))))
 
 (defn e5
   "Test if Accept-Charset header exists"
@@ -641,7 +750,7 @@
            (assoc request :acceptable-language acceptable)
            response
            (assoc state :d5 true))
-      (response-code 406 request response state :d5))))
+      (response-code resource 406 request response state :d5))))
 
 (defn d4
   "Test if Accept-Language header exists"
@@ -660,7 +769,7 @@
            (assoc request :acceptable-type acceptable)
            response
            (assoc state :c4 true))
-      (response-code 406 request response state :c4))))
+      (response-code resource 406 request response state :c4))))
 
 (defn c3
   "Test if Accept header exists"
@@ -673,7 +782,8 @@
   "Test if OPTIONS header exists"
   [resource request response state]
   (if (= :options (:request-method request))
-    (response-ok request
+    (response-ok resource
+                 request
                   (assoc response :headers
                          (merge (:headers response)
                                 (#(apply-callback request resource :options))))
@@ -686,7 +796,7 @@
   (decide #(apply-callback request resource :valid-entity-length?)
           true
           #(b3 resource request response (assoc state :b4 true))
-          (response-code 413 request response state :b4)))
+          (response-code resource 413 request response state :b4)))
 
 (defn b5
   "Test if the request content type is a known content type"
@@ -694,7 +804,7 @@
   (decide #(apply-callback request resource :known-content-type?)
           true
           #(b4 resource request response (assoc state :b5 true))
-          (response-code 415 request response state :b5)))
+          (response-code resource 415 request response state :b5)))
 
 (defn b6
   "Test if the Content-* headers are valide"
@@ -702,14 +812,14 @@
   (decide #(apply-callback request resource :valid-content-headers?)
           true
           #(b5 resource request response (assoc state :b6 true))
-          (response-code 501 request response state :b6)))
+          (response-code resource 501 request response state :b6)))
 
 (defn b7
   "Test if this resource is forbidden"
   [resource request response state]
   (decide #(apply-callback request resource :forbidden?)
           true
-          (response-code 403 request response state :b7)
+          (response-code resource 403 request response state :b7)
           #(b6 resource request response (assoc state :b6 true))))
 
 (defn b8
@@ -722,20 +832,21 @@
       #(b7 resource request response (assoc state :b8 true))
 
       (instance? String result)
-      (response-code 401
+      (response-code resource
+                     401
                      request
                      (assoc-in response [:headers "WWW-Authenticate"] result)
                      state :b8)
 
       :else
-      (response-code 401 request response state :b8))))
+      (response-code resource 401 request response state :b8))))
 
 (defn b9b
   "Test if this request is Malformed"
   [resource request response state]
   (decide #(apply-callback request resource :malformed-request?)
           true
-          (response-code 400 request response state :b9b)
+          (response-code resource 400 request response state :b9b)
           #(b8 resource request response (assoc state :b9b false))))
 
 (defn b9a
@@ -757,13 +868,13 @@
 
         #(b9b resource request response (assoc state :b9a true))
 
-        (response-code 400 request
+        (response-code resource 400 request
                         (assoc response :body
                                "Content-MD5 header does not match request body")
                         state :b9a))
 
       :else
-      (response-code 400 request
+      (response-code resource 400 request
                       (assoc :body response
                              "Content-MD5 header does not match request body")
                       state :b9a))))
@@ -787,6 +898,7 @@
           true
           #(b9 resource request response (assoc state :b10 true))
           (response-code
+           resource
            405 request
            (assoc-in response [:headers "Allow"]
                      (list-keys-to-upstring
@@ -798,7 +910,7 @@
   [resource request response state]
   (decide #(apply-callback request resource :uri-too-long?)
           true
-          (response-code 414 request response state :b11)
+          (response-code resource 414 request response state :b11)
           #(b10 resource request response (assoc state :b11 false))))
 
 (defn b12
@@ -809,7 +921,7 @@
                  (apply-callback request resource :known-methods))
           true
           #(b11 resource request response (assoc state :b12 true))
-          (response-code 501 request response state :b12)))
+          (response-code resource 501 request response state :b12)))
 
 (defn b13
   "Is the resource available?"
@@ -817,7 +929,8 @@
   (let [available (apply-callback request resource :service-available?)]
     (if (or (not available)
             (map? available))
-      (response-code 503
+      (response-code resource
+                     503
                      request
                      (if (not available)
                        response
