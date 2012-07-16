@@ -81,6 +81,16 @@
           req test-request]
       (is (= 414 (:status (run req res))) "Request URI too long")))
 
+  (testing "B11 Invalid with Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:uri-too-long?
+                         (fn [request] {:body "Way too long."})})
+          req test-request]
+      (let [result (run req res)]
+        (is (and (= 414 (:status result))
+                 (= "Way too long." (:body result)))
+            "Request URI too long"))))
+
   (testing "B11 Valid"
     (let [res (resource {"text/html" "testing"})
           req test-request]
@@ -102,6 +112,24 @@
     (let [res (resource {"text/html" "testing"})
           req test-request]
       (is (= 200 (:status (run req res))))))
+
+  ;; Malformed request
+
+  (testing "B9B Malformed Request"
+    (let [res (resource {"text/html" "testing"}
+                        {:malformed-request? (fn [request] true)})
+          req test-request]
+      (let [response (run req res)]
+        (is (= 400 (:status response))))))
+
+  (testing "B9B Malformed Request with Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:malformed-request?
+                         (fn [request] {:body "Yucky request received"})})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 400 (:status response))
+                 (= "Yucky request received" (:body response)))))))
 
   ;; Contains "Content-MD5" header?
 
@@ -172,6 +200,17 @@
           req test-request]
       (is (= 403 (:status (run req res))) "Forbidden")))
 
+  (testing "B7 Invalid with Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:forbidden?
+                         (fn [request]
+                           {:body "Oh no you don't."})})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 403 (:status (run req res)))
+                 (= "Oh no you don't." (:body response)))
+            "Forbidden"))))
+
   ;; valid content headers?
 
   (testing "B6 Valid"
@@ -184,6 +223,18 @@
                         {:valid-content-headers? (fn [request] false)})
           req test-request]
       (is (= 501 (:status (run req res))) "Not implemented")))
+
+  (testing "B6 Invalid with Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:valid-content-headers?
+                         (fn [request]
+                           [false
+                            {:body "That's some wack content type!"}])})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 501 (:status (run req res)))
+                 (= "That's some wack content type!" (:body response)))
+            "Not implemented"))))
 
   ;; known content type?
 
@@ -198,6 +249,18 @@
           req test-request]
       (is (= 415 (:status (run req res))) "Unsupported media type")))
 
+  (testing "B5 Invalid with Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:known-content-type?
+                         (fn [request]
+                           [false
+                            {:body "I don't play MP3s."}])})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 415 (:status response))
+                 (= "I don't play MP3s." (:body response)))
+            "Unsupported media type"))))
+
   ;; valid entity length?
 
   (testing "B4 Valid"
@@ -210,6 +273,18 @@
                         {:valid-entity-length? (fn [request] false)})
           req test-request]
       (is (= 413 (:status (run req res))) "Request entity too large")))
+
+  (testing "B4 Invalid with Body"
+    (let [res (resource {"text/html" "testing"}
+                        {:valid-entity-length?
+                         (fn [request]
+                           [false
+                            {:body "Dude, totally too long."}])})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 413 (:status (run req res)))
+                 (= "Dude, totally too long." (:body response)))
+            "Request entity too large"))))
 
   ;; options?
 
@@ -787,7 +862,7 @@
       (let [response (run req res)]
         (is (= 410 (:status response))))))
 
-    (testing "N5, POST to Missing Resource, Not Allowed, Body Present"
+  (testing "N5, POST to Missing Resource, Not Allowed, Body Present"
     (let [res (resource {"text/html" (fn [request] {:body "testing"})}
                         {:allowed-methods (fn [request] [:post])
                          :allow-missing-post? (fn [request]
@@ -801,6 +876,16 @@
       (let [response (run req res)]
         (is (and (= 410 (:status response))
                  (= "No way, buddy!" (:body response)))))))
+
+  (testing "N5, POST to Missing Resource, Not Allowed"
+    (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                        {:allowed-methods (fn [request] [:post])
+                         :allow-missing-post? (fn [request] false)
+                         :resource-exists? (fn [request] false)
+                         :previously-existed? (fn [request] true)})
+          req (assoc test-request :request-method :post)]
+      (let [response (run req res)]
+        (is (= 410 (:status response))))))
 
   (testing "I4, PUT to Moved Permanently"
     (let [res (resource {"text/html" (fn [request] {:body "testing"})}

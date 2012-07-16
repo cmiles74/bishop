@@ -10,6 +10,64 @@
   []
   {
 
+   ;; When you are coding up a handler function, you may return
+   ;; several values. For all handlers you may return either a true or
+   ;; false or a map containing a response that will be merged with
+   ;; the response map built-up at callback time. For instance, the
+   ;; :malformed-request? handler, uin the simplest case, would look
+   ;; like the following.
+   ;;
+   ;; (fn [r] true)
+   ;;
+   ;; That is, for all request a 400 response would be returned. If
+   ;; you'd like to provide body as well, you could provide this data
+   ;; in a response map.
+   ;;
+   ;; (fn [r] {:headers {"content-type" "text/plain"}
+   ;;          :body "The provided request was not data I like."})
+   ;;
+   ;; Several callbacks are more complicated. For instance, the
+   ;; :is-authorized?  callback expects to recieve a true if the
+   ;; client is authorized, a false if they or not or a String that
+   ;; will be used in the "WWW-Authenticate" header for the
+   ;; unauthorized client.
+   ;;
+   ;; In this case if you need to return a body you may return a
+   ;; sequence. The first item in that sequence should be true or
+   ;; false, the second item should be a response map that will be
+   ;; merged into the response built-up at the time of callback. For
+   ;; instance, to provide a body for the :is-authorized? callback
+   ;; (this would be for unauthorized clients), you might return the
+   ;; following sequence:
+   ;;
+   ;; [false {:headers {"www-authenticate" "Basic realm=\"Secure\""
+   ;;                   "content-type" "text/plain"}
+   ;;         :body "Accounts will lock after three failed attempts"}]
+   ;;
+   ;; Note that since you are returning a response map instead of the
+   ;; String that the calling functions expect, it's assumed that you
+   ;; are handling the necessary header for the callback. These
+   ;; headers are noted in the comments for the resources. If ignored,
+   ;; your application will demonstrate unpredictable behavior.
+   ;;
+   ;; Additionally, not all callbacks result in a response being sent
+   ;; to the client. For instance, the :allow-missing-post? callback
+   ;; is used to decide how an incoming request is handled. Returning
+   ;; a body from this function would make no sense. The callback
+   ;; functions that may use the above mechanism to return a response
+   ;; body are listed below.
+   ;;
+   ;; *  :is-conflict?
+   ;; *  :process-post
+   ;; *  :allow-missing-post?
+   ;; *  :delete-completed?
+   ;; *  :valid-entity-length?
+   ;; *  :known-content-type?
+   ;; *  :is-authorized?
+   ;; *  :malformed-request?
+   ;; *  :uri-too-long?
+   ;; *  :service-available? (false or a map if unavailable)
+
    ;; Return false to indicate the requested resource does not
    ;; exist; A "404 Not Found" message will be provided to the client.
    :resource-exists? (fn [request] true)

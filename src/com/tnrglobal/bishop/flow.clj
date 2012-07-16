@@ -17,15 +17,32 @@
   [request resource callback]
   ((callback (:handlers resource)) request))
 
+(defn apply-callback-compat
+  "Invokes the provided callback function on the supplied resource."
+  [request resource callback]
+  (let [result ((callback (:handlers resource)) request)]
+    (cond
+
+      ;; return the map
+      (map? result) result
+
+      ;; backward compatibilty, an callback function returned [true
+      ;; <something>] and is being handled by code that didn't call
+      ;; apply-merge-callback
+      (and (coll? result) (= true (first result))) (second result)
+
+      ;; return the result
+      :else result)))
+
 (defn apply-merge-callback
   "Applies the specified callback to the provided resource. If the
   callback returns a response map then that map is merged with the
   provided response and returned. If the callback returns a sequence,
   the first item in that sequence is our boolean result and the
-  remainder is treated as the respons boyd. If the callback returns
+  remainder is treated as the respons body. If the callback returns
   boolean true or false, it is simply wrapped in a sequence."
   [request resource response callback]
-  (let [result (apply-callback request resource callback)]
+  (let [result ((callback (:handlers resource)) request)]
     (cond
 
       ;; map result is the same as true
@@ -444,10 +461,10 @@
 (defn m7
   "Test if POST to missing resource is allowed"
   [resource request response state]
-  (decide #(apply-callback request resource :allow-missing-post?)
-          true
-          #(n11 resource request response (assoc state :m7 true))
-          (response-code resource 404 request response state :m7)))
+  (apply-merge-callback-decide
+   request resource response :allow-missing-post?
+   #(n11 resource request % (assoc state :m7 true))
+   #(response-code resource 404 request % state :m7)))
 
 (defn m5
   "Test if this is an HTTP POST request"
@@ -793,61 +810,77 @@
 (defn b4
   "Test if request entity is too large"
   [resource request response state]
-  (decide #(apply-callback request resource :valid-entity-length?)
-          true
-          #(b3 resource request response (assoc state :b4 true))
-          (response-code resource 413 request response state :b4)))
+  (apply-merge-callback-decide
+   request resource response :valid-entity-length?
+   #(b3 resource request % (assoc state :b4 true))
+   #(response-code resource 413 request % state :b4)))
 
 (defn b5
   "Test if the request content type is a known content type"
   [resource request response state]
-  (decide #(apply-callback request resource :known-content-type?)
-          true
-          #(b4 resource request response (assoc state :b5 true))
-          (response-code resource 415 request response state :b5)))
+  (apply-merge-callback-decide
+   request resource response :known-content-type?
+   #(b4 resource request % (assoc state :b5 true))
+   #(response-code resource 415 request % state :b5)))
 
 (defn b6
-  "Test if the Content-* headers are valide"
+  "Test if the Content-* headers are valid"
   [resource request response state]
-  (decide #(apply-callback request resource :valid-content-headers?)
-          true
-          #(b5 resource request response (assoc state :b6 true))
-          (response-code resource 501 request response state :b6)))
+  (apply-merge-callback-decide
+   request resource response :valid-content-headers?
+   #(b5 resource request % (assoc state :b6 true))
+   #(response-code resource 501 request % state :b6)))
 
 (defn b7
   "Test if this resource is forbidden"
   [resource request response state]
-  (decide #(apply-callback request resource :forbidden?)
-          true
-          (response-code resource 403 request response state :b7)
-          #(b6 resource request response (assoc state :b6 true))))
+  (apply-merge-callback-decide
+   request resource response :forbidden?
+   #(response-code resource 403 request % state :b7)
+   #(b6 resource request % (assoc state :b6 true))))
 
 (defn b8
   "Test if this request is authorized to access this resource"
   [resource request response state]
-  (let [result (#(apply-callback request resource :is-authorized?))]
+  (let [result (apply-callback request resource :is-authorized?)]
     (cond
 
+      ;; they are authorized, merge in the response map
+      (map? result)
+      #(b7 resource request (merge-responses response result)
+           (assoc state :b8 true))
+
+      ;; they are authorized
       (= true result)
       #(b7 resource request response (assoc state :b8 true))
 
+      ;; not authorized, the String response is our authenticate header
       (instance? String result)
       (response-code resource
                      401
                      request
-                     (assoc-in response [:headers "WWW-Authenticate"] result)
+                     (assoc-in response
+                               [:headers "WWW-Authenticate"]
+                               result)
                      state :b8)
 
+      ;; not authorized, assume the authenticate header was added
+      (and (coll? result)
+           (= false (first result)))
+      (response-code resource 401 request
+                     (merge-responses response (second response)) state :b8)
+
+      ;; not authorized and no authenticate header
       :else
-      (response-code resource 401 request response state :b8))))
+      (response-code resource 401 request response state b8))))
 
 (defn b9b
   "Test if this request is Malformed"
   [resource request response state]
-  (decide #(apply-callback request resource :malformed-request?)
-          true
-          (response-code resource 400 request response state :b9b)
-          #(b8 resource request response (assoc state :b9b false))))
+  (apply-merge-callback-decide
+   request resource response :malformed-request?
+   #(response-code resource 400 request % state :b9b)
+   #(b8 resource request % (assoc state :b9b false))))
 
 (defn b9a
   "Test if the Content-MD5 is valid"
@@ -908,10 +941,10 @@
 (defn b11
   "Test if the request URI is too long"
   [resource request response state]
-  (decide #(apply-callback request resource :uri-too-long?)
-          true
-          (response-code resource 414 request response state :b11)
-          #(b10 resource request response (assoc state :b11 false))))
+  (apply-merge-callback-decide
+   request resource response :uri-too-long?
+   #(response-code resource 414 request % state :b11)
+   #(b10 resource request % (assoc state :b11 false))))
 
 (defn b12
   "Test if the request method is a known method"
