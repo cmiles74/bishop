@@ -316,7 +316,10 @@
     (let [res (resource {"text/plain" "testing"})
           req (assoc-in test-request [:headers "accept"]
                         "text/html,application/xhtml+xml,application/xml;q=0.9")]
-      (is (= 406 (:status (run req res))) "Not Acceptable")))
+      (let [response (run req res)]
+        (is (and (= 406 (:status response))
+                 (= "text/plain; charset=utf-8" (:body response)))
+            "Not Acceptable"))))
 
   ;; acceptable language?
 

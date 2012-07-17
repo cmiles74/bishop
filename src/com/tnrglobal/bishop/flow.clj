@@ -136,7 +136,10 @@
                           ;; if the content type header has been
                           ;; manually set, it takes precedence
                           (and (:headers response)
-                               ((:headers response) "content-type"))
+                               ((:headers response) "content-type")
+                               (first (string/split
+                                       ((:headers response) "content-type")
+                                       #";")))
                           (first (string/split
                                   ((:headers response) "content-type") #";"))
 
@@ -175,6 +178,54 @@
               [:headers "content-type"]
               (str acceptable-type "; "
                    "charset=" acceptable-charset))))
+
+(defn suggested-acceptable-type
+  "Returns a list of acceptaple media types."
+  [resource request response]
+  (let [acceptable-type (cond
+
+                          ;; if the content type header has been
+                          ;; manually set, it takes precedence
+                          (and (:headers response)
+                               ((:headers response) "content-type")
+                               (first (string/split
+                                       ((:headers response) "content-type")
+                                       #";")))
+                          (first (string/split
+                                  ((:headers response) "content-type") #";"))
+
+                          ;; the negotiated type is the next best
+                          (:acceptable-type request)
+                          (:acceptable-type request)
+
+                          ;; we're desperate, use the first content
+                          ;; type offered
+                          :else
+                          (first (keys (:response resource))))
+
+        acceptable-charset (cond
+
+                             ;; if the content type header has a
+                             ;; character set, use that
+                             (and (:headers response)
+                                  ((:headers response) "content-type")
+                                  (re-find #"charset=(.+);?"
+                                           ((:headers response)
+                                            "content-type")))
+                             (second (re-find #"charset=(.+);?"
+                                              ((:headers response)
+                                               "content-type")))
+
+                             ;; use the negotiated character set
+                             (:acceptable-charset request)
+                             (:acceptable-charset request)
+
+                             ;; use the first provided character set
+                             :else
+                             (first (apply-callback request
+                                                    resource
+                                                    :charsets-provided)))]
+    (str acceptable-type "; charset=" acceptable-charset)))
 
 (defn add-body
   "Calculates and appends the body to the provided request."
@@ -710,7 +761,12 @@
                     (apply-callback request resource :encodings-provided)
                     headers)]
     (if (empty? acceptable)
-      (response-code resource 406 request response state :f7)
+      (response-code resource 406 request
+                     (assoc response :body
+                            (suggested-acceptable-type resource
+                                                       request
+                                                       response))
+                     state :f7)
       #(g7 resource
            (assoc request :acceptable-encoding acceptable)
            response
@@ -738,7 +794,12 @@
            (assoc request :acceptable-charset acceptable)
            response
            (assoc state :e6 true))
-      (response-code resource 406 request response state :e6))))
+      (response-code resource 406 request
+                     (assoc response :body
+                            (suggested-acceptable-type resource
+                                                       request
+                                                       response))
+                     state :e6))))
 
 (defn e5
   "Test if Accept-Charset header exists"
@@ -767,7 +828,12 @@
            (assoc request :acceptable-language acceptable)
            response
            (assoc state :d5 true))
-      (response-code resource 406 request response state :d5))))
+      (response-code resource 406 request
+                     (assoc response :body
+                            (suggested-acceptable-type resource
+                                                       request
+                                                       response))
+                     state :d5))))
 
 (defn d4
   "Test if Accept-Language header exists"
@@ -786,7 +852,12 @@
            (assoc request :acceptable-type acceptable)
            response
            (assoc state :c4 true))
-      (response-code resource 406 request response state :c4))))
+      (response-code resource 406 request
+                     (assoc response :body
+                            (suggested-acceptable-type resource
+                                                       request
+                                                       response))
+                     state :c4))))
 
 (defn c3
   "Test if Accept header exists"
