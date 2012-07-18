@@ -12,12 +12,16 @@
             [clojure.string :as string]))
 
 ;; date format to use when outputting headers
-(def HTTP-DATE-FORMAT (DateTimeFormat/forPattern "EEE, dd MMM yyyy HH:mm:ss 'GMT'"))
+(def HTTP-DATE-FORMAT (DateTimeFormat/forPattern
+                       "EEE, dd MMM yyyy HH:mm:ss 'GMT'"))
 
 ;; valid HTTP Date header formats
-(def VALID-HTTP-DATE-FORMATS [(DateTimeFormat/forPattern "EEE, dd MMM yyyy HH:mm:ss 'GMT'")
-                              (DateTimeFormat/forPattern "EEEE, dd-MMM-yy HH:mm:ss 'GMT'")
-                              (DateTimeFormat/forPattern "EEE MMM d HH:mm:ss yyyy")])
+(def VALID-HTTP-DATE-FORMATS [(DateTimeFormat/forPattern
+                               "EEE, dd MMM yyyy HH:mm:ss 'GMT'")
+                              (DateTimeFormat/forPattern
+                               "EEEE, dd-MMM-yy HH:mm:ss 'GMT'")
+                              (DateTimeFormat/forPattern
+                               "EEE MMM d HH:mm:ss yyyy")])
 
 (defn key-to-upstring
   "Returns a String containing the uppercase name of the provided

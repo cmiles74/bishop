@@ -129,6 +129,8 @@
           req test-request]
       (let [response (run req res)]
         (is (and (= 400 (:status response))
+                 (= "text/plain; charset=utf-8" ((:headers response)
+                                                "Content-Type"))
                  (= "Yucky request received" (:body response)))))))
 
   ;; Contains "Content-MD5" header?

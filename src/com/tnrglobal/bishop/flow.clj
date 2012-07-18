@@ -107,6 +107,28 @@
   (second (some #(= encoding (first %))
                 (apply-callback request resource :encodings-provided))))
 
+(defn get-header
+  "Returns the selecte header from the provided response, regardless
+  of case."
+  [response header]
+
+  ;; compute our lower and title header
+  (let [lower-header (.toLowerCase header)
+        title-header (header-to-titlecase header)]
+    (cond
+
+      ;; we have no response headers
+      (not (:headers response))
+      nil
+
+      ;; lower-header present
+      ((:headers response) lower-header)
+      ((:headers response) lower-header)
+
+      ;; title header present or header absent
+      :else
+      ((:headers response) title-header))))
+
 (defn caching-headers
   "Returns a sequence with the appropriate caching headers for the
   provided resource attached."
@@ -144,17 +166,18 @@
   [resource request response & {:keys [default-content default-charset]
                                 :or {default-content nil
                                      default-charset nil}}]
-  (let [acceptable-type (cond
+  (let [header-content-type (get-header response "content-type")
+        acceptable-type (cond
 
                           ;; if the content type header has been
                           ;; manually set, it takes precedence
                           (and (:headers response)
-                               ((:headers response) "content-type")
+                               header-content-type
                                (first (string/split
-                                       ((:headers response) "content-type")
+                                       header-content-type
                                        #";")))
                           (first (string/split
-                                  ((:headers response) "content-type") #";"))
+                                  header-content-type #";"))
 
                           ;; the negotiated type is the next best
                           (:acceptable-type request)
@@ -172,13 +195,11 @@
                              ;; if the content type header has a
                              ;; character set, use that
                              (and (:headers response)
-                                  ((:headers response) "content-type")
+                                  header-content-type
                                   (re-find #"charset=(.+);?"
-                                           ((:headers response)
-                                            "content-type")))
+                                           header-content-type))
                              (second (re-find #"charset=(.+);?"
-                                              ((:headers response)
-                                               "content-type")))
+                                              header-content-type))
 
                              ;; use the negotiated character set
                              (:acceptable-charset request)
