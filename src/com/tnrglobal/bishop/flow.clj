@@ -123,65 +123,27 @@
       (merge-responses response response-out)
       response)))
 
-(defn set-content-type
-  "Calculates and sets the content type for the provided request and
-  response, a new response map is returned. If the negotiation of the
-  content type hasn't yet been determined, then \"text/plain\" is
-  used. If the negotiation of the character set has not yet been
-  determined then the first character set provided by the resource is
-  used."
-  [resource request response]
-  (let [acceptable-type (cond
+(defn suggested-content-type
+  "Returns the content-type that is most similar to what the client is
+  requesting. If the negotiation of the content type and character set
+  have completed, then they will be used to construct the returned
+  content-type. If this has not completed or if a content-type could
+  not be negotiated, this function will return a content type most
+  similar to what the client is requesting. If there is no common
+  ground between the client request and the resource, the first
+  content-type and the first character set supported by the resource
+  will be used.
 
-                          ;; if the content type header has been
-                          ;; manually set, it takes precedence
-                          (and (:headers response)
-                               ((:headers response) "content-type")
-                               (first (string/split
-                                       ((:headers response) "content-type")
-                                       #";")))
-                          (first (string/split
-                                  ((:headers response) "content-type") #";"))
+  The behavior of this function may be customized with the following
+  keys.
 
-
-                          ;; the negotiated type is the next best
-                          (:acceptable-type request)
-                          (:acceptable-type request)
-
-                          ;; we have nothing, go with plain text
-                          :else
-                          "text/plain")
-
-        acceptable-charset (cond
-
-                             ;; if the content type header has a
-                             ;; character set, use that
-                             (and (:headers response)
-                                  ((:headers response) "content-type")
-                                  (re-find #"charset=(.+);?"
-                                           ((:headers response)
-                                            "content-type")))
-                             (second (re-find #"charset=(.+);?"
-                                              ((:headers response)
-                                               "content-type")))
-
-                             ;; use the negotiated character set
-                             (:acceptable-charset request)
-                             (:acceptable-charset request)
-
-                             ;; use the first provided character set
-                             :else
-                             (first (apply-callback request
-                                                    resource
-                                                    :charsets-provided)))]
-    (assoc-in response
-              [:headers "content-type"]
-              (str acceptable-type "; "
-                   "charset=" acceptable-charset))))
-
-(defn suggested-acceptable-type
-  "Returns a list of acceptaple media types."
-  [resource request response]
+    :default-content Content type to use if one can't be chosen; first
+      content-type provided by the resource
+    :default-charset Character set to use if one can't be chosen; first
+      character set provided by the resource"
+  [resource request response & {:keys [default-content default-charset]
+                                :or {default-content nil
+                                     default-charset nil}}]
   (let [acceptable-type (cond
 
                           ;; if the content type header has been
@@ -199,9 +161,11 @@
                           (:acceptable-type request)
 
                           ;; we're desperate, use the first content
-                          ;; type offered
+                          ;; type offered or the provided default
                           :else
-                          (first (keys (:response resource))))
+                          (if default-content
+                            default-content
+                            (first (keys (:response resource)))))
 
         acceptable-charset (cond
 
@@ -221,11 +185,28 @@
                              (:acceptable-charset request)
 
                              ;; use the first provided character set
+                             ;; or the provided default
                              :else
-                             (first (apply-callback request
-                                                    resource
-                                                    :charsets-provided)))]
+                             (if default-charset
+                               default-charset
+                               (first (apply-callback request
+                                                      resource
+                                                      :charsets-provided))))]
     (str acceptable-type "; charset=" acceptable-charset)))
+
+(defn set-content-type
+  "Calculates and sets the content type for the provided request and
+  response, a new response map is returned. If the negotiation of the
+  content type hasn't yet been determined, then \"text/plain\" is
+  used. If the negotiation of the character set has not yet been
+  determined then the first character set provided by the resource is
+  used."
+  [resource request response]
+  (let [suggested (suggested-content-type resource request response
+                                          :default-content "text/plain")]
+    (assoc-in response
+              [:headers "content-type"]
+              suggested)))
 
 (defn add-body
   "Calculates and appends the body to the provided request."
@@ -270,9 +251,11 @@
   the provided code) and a map of state data representing the decision
   flow. This function represents the end of the run."
   [code request response state]
-  [code request (assoc (assoc response :status code)
-                  :headers (headers-to-titlecase
-                            (:headers response))) state])
+  [code
+   request
+   (assoc (assoc response :status code)
+     :headers (headers-to-titlecase (:headers response)))
+   state])
 
 (defn response-ok
   "Returns a function that will return a 200 response code and add the
@@ -281,15 +264,17 @@
   [resource request response state node]
   #(return-code (if (:status response) (:status response) 200)
                 request
-                response
+                (set-content-type resource request response)
                 (assoc state node true)))
 
 (defn response-code
   "Returns a function that will return a response code and add the
   provided node (a keyword) to the state."
   [resource code request response state node]
-  (let [response-out (set-content-type resource request response)]
-    #(return-code code request response-out (assoc state node false))))
+  #(return-code code
+                request
+                (set-content-type resource request response)
+                (assoc state node false)))
 
 (defn respond
   "This function provides an endpoint for our processing pipeline, it
@@ -763,7 +748,7 @@
     (if (empty? acceptable)
       (response-code resource 406 request
                      (assoc response :body
-                            (suggested-acceptable-type resource
+                            (suggested-content-type resource
                                                        request
                                                        response))
                      state :f7)
@@ -796,7 +781,7 @@
            (assoc state :e6 true))
       (response-code resource 406 request
                      (assoc response :body
-                            (suggested-acceptable-type resource
+                            (suggested-content-type resource
                                                        request
                                                        response))
                      state :e6))))
@@ -830,7 +815,7 @@
            (assoc state :d5 true))
       (response-code resource 406 request
                      (assoc response :body
-                            (suggested-acceptable-type resource
+                            (suggested-content-type resource
                                                        request
                                                        response))
                      state :d5))))
@@ -854,7 +839,7 @@
            (assoc state :c4 true))
       (response-code resource 406 request
                      (assoc response :body
-                            (suggested-acceptable-type resource
+                            (suggested-content-type resource
                                                        request
                                                        response))
                      state :c4))))

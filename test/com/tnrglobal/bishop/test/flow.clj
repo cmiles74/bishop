@@ -299,9 +299,10 @@
                          :options (fn [request]
                                     {"allow" "GET, HEAD, OPTIONS"})})
           req (assoc test-request :request-method :options)]
-      (is (some (fn [[header value]]
-                  (= "Allow" header))
-                (:headers (run req res))) "Request entity too large")))
+      (let [response (run req res)]
+        (is (some (fn [[header value]]
+                    (= "Allow" header))
+                  (:headers response))))))
 
   ;; acceptable content type?
 
