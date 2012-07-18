@@ -159,29 +159,36 @@
   The behavior of this function may be customized with the following
   keys.
 
+    :override-content Content type instead of negotiated; nil
+    :override-charset Character set to use instead of negotiatied; nil
     :default-content Content type to use if one can't be chosen; first
       content-type provided by the resource
     :default-charset Character set to use if one can't be chosen; first
       character set provided by the resource"
-  [resource request response & {:keys [default-content default-charset]
-                                :or {default-content nil
+  [resource request response & {:keys [override-content override-charset
+                                       default-content default-charset]
+                                :or {override-content nil
+                                     override-charset nil
+                                     default-content nil
                                      default-charset nil}}]
   (let [header-content-type (get-header response "content-type")
         acceptable-type (cond
 
                           ;; if the content type header has been
                           ;; manually set, it takes precedence
-                          (and (:headers response)
-                               header-content-type
+                          (and header-content-type
                                (first (string/split
                                        header-content-type
                                        #";")))
                           (first (string/split
                                   header-content-type #";"))
 
-                          ;; the negotiated type is the next best
+                          ;; the negotiated type or the override is
+                          ;; the next best
                           (:acceptable-type request)
-                          (:acceptable-type request)
+                          (if override-content
+                            override-content
+                            (:acceptable-type request))
 
                           ;; we're desperate, use the first content
                           ;; type offered or the provided default
@@ -201,9 +208,12 @@
                              (second (re-find #"charset=(.+);?"
                                               header-content-type))
 
-                             ;; use the negotiated character set
+                             ;; the negotiated charset or the override
+                             ;; is the next best
                              (:acceptable-charset request)
-                             (:acceptable-charset request)
+                             (if override-charset
+                               override-charset
+                               (:acceptable-charset request))
 
                              ;; use the first provided character set
                              ;; or the provided default
@@ -215,7 +225,7 @@
                                                       :charsets-provided))))]
     (str acceptable-type "; charset=" acceptable-charset)))
 
-(defn set-content-type
+(defn ensure-content-type
   "Calculates and sets the content type for the provided request and
   response, a new response map is returned. If the negotiation of the
   content type hasn't yet been determined, then \"text/plain\" is
@@ -225,9 +235,8 @@
   [resource request response]
   (let [suggested (suggested-content-type resource request response
                                           :default-content "text/plain")]
-    (assoc-in response
-              [:headers "content-type"]
-              suggested)))
+    (merge-responses response
+                     {:headers {"content-type" suggested}})))
 
 (defn add-body
   "Calculates and appends the body to the provided request."
@@ -244,7 +253,7 @@
 
             ;; associate our content-type and character set with the
             ;; outgoing response
-            response-out (set-content-type resource request response)]
+            response-out (ensure-content-type resource request response)]
 
         (cond
 
@@ -285,7 +294,7 @@
   [resource request response state node]
   #(return-code (if (:status response) (:status response) 200)
                 request
-                (set-content-type resource request response)
+                (ensure-content-type resource request response)
                 (assoc state node true)))
 
 (defn response-code
@@ -294,7 +303,7 @@
   [resource code request response state node]
   #(return-code code
                 request
-                (set-content-type resource request response)
+                (ensure-content-type resource request response)
                 (assoc state node false)))
 
 (defn respond
@@ -437,7 +446,8 @@
                               (if (and (:status response-out)
                                        (not= 303 (:status response-out)))
                                 (assoc response-out :headers
-                                       (dissoc (:headers response) "Location"))
+                                       (dissoc (:headers response-out)
+                                               "Location"))
                                 response-out)
 
                               state :n11))))
@@ -463,19 +473,34 @@
                          response
                          state :n11)
 
-          (or (nil? process-post)
-              (= false process-post))
-          (throw (Exception. (str "Process post invalid")))
+          ;; boolean true returned
+          (= true process-post)
+          (response-code resource
+                         204
+                         request
+                         response
+                         state :n11)
+
+          ;; map returned
+          (map? process-post)
+          (cond
+
+            ;; we have a status code
+            (:status process-post)
+            (response-code resource
+                           (:status process-post)
+                           request
+                           process-post
+                           :state n11)
+
+            :else
+            #(p11 resource
+                  request
+                  process-post
+                  (assoc state :n11 false)))
 
           :else
-          #(p11 resource
-                request
-                (add-body (:response resource)
-                          request
-                          (if (map? process-post)
-                            (merge-responses response process-post)
-                            response))
-                (assoc state :n11 false)))))))
+          (throw (Exception. (str "Process post invalid"))))))))
 
 (defn n16
   "Test if this is an HTTP POST request"

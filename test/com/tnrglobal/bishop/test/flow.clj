@@ -61,6 +61,17 @@
           req test-request]
       (is (= 200 (:status (run req res))))))
 
+  (testing "B13 Valid, Override Content-Type"
+    (let [res (resource {"text/html"
+                         (fn [r]
+                           {:headers {"content-type" "text/something"}
+                            :body "testing"})})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 200 (:status response))
+                 (= "text/something; charset=utf-8" ((:headers response)
+                                                     "Content-Type")))))))
+
   ;; Known method?
 
   (testing "B12 Invalid"
@@ -256,11 +267,14 @@
                         {:known-content-type?
                          (fn [request]
                            [false
-                            {:body "I don't play MP3s."}])})
+                            {:body "I don't play MP3s."
+                             :headers {"content-type" "text/gobbeldy"}}])})
           req test-request]
       (let [response (run req res)]
         (is (and (= 415 (:status response))
-                 (= "I don't play MP3s." (:body response)))
+                 (= "I don't play MP3s." (:body response))
+                 (= "text/gobbeldy; charset=utf-8" ((:headers response)
+                                                "Content-Type")))
             "Unsupported media type"))))
 
   ;; valid entity length?
@@ -785,6 +799,19 @@
         (is (and (= 303 (:status response))
                  (= "/testing/new" ((:headers response) "Location")))))))
 
+  (testing "N11, Post is Create, Bad Post, Body from Callback"
+    (let [res (resource {"text/html" (fn [request]
+                                       {:status 422
+                                        :body "testing"
+                                        :headers {"content-type" "text/plain"}})}
+                        {:allowed-methods (fn [request] [:post])
+                         :post-is-create? (fn [request] true)})
+          req (assoc test-request :request-method :post)]
+      (let [response (run req res)]
+        (is (and (= 422 (:status response))
+                 (= "text/plain; charset=utf-8"
+                    ((:headers response) "Content-Type")))))))
+
   (testing "N11, Post is Not Create, 'Location' Header"
     (let [res (resource {"text/html" (fn [request]
                                        {:body "testing for realz"})}
@@ -797,12 +824,23 @@
       (let [response (run req res)]
         (is (= 201 (:status response))))))
 
-  (testing "N11, Post is Not Create"
+  (testing "N11, Post is Not Create, No Body"
     (let [res (resource {"text/html" (fn [request]
                                        {:body "testing"})}
                         {:allowed-methods (fn [request] [:post])
                          :post-is-create? (fn [request] false)
                          :process-post (fn [request] true)})
+          req (assoc test-request :request-method :post)]
+      (let [response (run req res)]
+        (is (= 204 (:status response))))))
+
+  (testing "N11, Post is Not Create, Body"
+    (let [res (resource {"text/html" (fn [request]
+                                       {:body "testing"})}
+                        {:allowed-methods (fn [request] [:post])
+                         :post-is-create? (fn [request] false)
+                         :process-post (fn [request]
+                                         {:body "POST handled!"})})
           req (assoc test-request :request-method :post)]
       (let [response (run req res)]
         (is (= 200 (:status response))))))
@@ -830,7 +868,7 @@
                          :process-post (fn [request] true)})
           req (assoc test-request :request-method :post)]
       (let [response (run req res)]
-        (is (= 200 (:status response))))))
+        (is (= 204 (:status response))))))
 
   (testing "K5, Moved Permanently"
     (let [res (resource {"text/html" (fn [request] {:body "testing"})}

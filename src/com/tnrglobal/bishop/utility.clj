@@ -246,8 +246,8 @@
                                (and (map? former) (map? latter))
                                (merge former latter)
 
-                               (nil? former)
-                               latter
+                               (nil? latter)
+                               former
 
                                :else
                                latter))
