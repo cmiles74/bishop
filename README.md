@@ -50,7 +50,7 @@ on Ring and I don't want to pull Compojure into the mix.
 To use Bishop, add the following to your project’s “:dependencies”:
 
 ```
-[tnrglobal/bishop "1.1.1"]
+[tnrglobal/bishop "1.1.2"]
 ```
 
 ## How Does it Work?
