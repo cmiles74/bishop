@@ -845,6 +845,22 @@
       (let [response (run req res)]
         (is (= 200 (:status response))))))
 
+  (testing "N11, Post is Not Create, Body, Handle Form"
+    (let [res (resource {"text/html" (fn [request]
+                                       {:body "testing"})}
+                        {:allowed-methods (fn [request] [:post])
+                         :post-is-create? (fn [request] false)
+                         :process-post (fn [request]
+                                         {:body (pr-str (:params request))})})
+          req (merge test-request
+                     {:request-method :post
+                      :params {:field-1 "Hello!" :field-2 "My name is Simon"}
+                      :body "field-1=Hello!&field-2=My+name+is+Simon"})]
+      (let [response (run req res)]
+        (is (= 200 (:status response))
+            (= "{:field-1 \"Hello!\", :field-2 \"My name is Simon\"}"
+               (:body response))))))
+
   (testing "L7, Not Post"
     (let [res (resource {"text/html" (fn [request] {:body "testing"})}
                         {:resource-exists? (fn [request] false)})
