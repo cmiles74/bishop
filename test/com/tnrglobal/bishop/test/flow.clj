@@ -979,4 +979,23 @@
                  (= "text/plain; charset=utf-8"
                     ((:headers response) "Content-Type"))
                  (= "Doh! We have one of those already."
-                    (:body response))))))))
+                    (:body response)))))))
+
+  (testing "G7, Resource Does Not Exist"
+    (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                        {:resource-exists? (fn [request] false)})
+          req test-request]
+      (let [response (run req res)]
+        (is (= 404 (:status response))))))
+
+  (testing "G7, Resource Does Not Exist with Body"
+    (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                        {:resource-exists? (fn [request]
+                                             [false
+                                              {:body "I'm not sure what to say."
+                                               :headers {"content-type"
+                                                         "test/plain"}}])})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 404 (:status response))
+                 (= "I'm not sure what to say." (:body response))))))))

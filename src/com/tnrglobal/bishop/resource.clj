@@ -66,6 +66,7 @@
    ;; *  :is-authorized?
    ;; *  :malformed-request?
    ;; *  :uri-too-long?
+   ;; *  :resource-exists?
    ;; *  :service-available? (false or a map if unavailable)
 
    ;; Return false to indicate the requested resource does not

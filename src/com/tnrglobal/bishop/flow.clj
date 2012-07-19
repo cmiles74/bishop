@@ -779,10 +779,10 @@
                          response
                          {:headers {"vary" (apply str (interpose ", " vary))}})]
 
-    (decide #(apply-callback request resource :resource-exists?)
-            true
-            #(g8 resource request response-varied (assoc state :g7 true))
-            #(h7 resource request response-varied (assoc state :g7 false)))))
+    (apply-merge-callback-decide
+     request resource response-varied :resource-exists?
+     #(g8 resource request % (assoc state :g7 true))
+     #(h7 resource request % (assoc state :g7 false)))))
 
 (defn f7
   "Test if acceptable encoding is available"
