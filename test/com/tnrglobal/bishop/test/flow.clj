@@ -994,8 +994,22 @@
                                              [false
                                               {:body "I'm not sure what to say."
                                                :headers {"content-type"
-                                                         "test/plain"}}])})
+                                                         "text/plain"}}])})
           req test-request]
       (let [response (run req res)]
+        (is (and (= 404 (:status response))
+                 (= "I'm not sure what to say." (:body response)))))))
+
+  (testing "G7, Resource Does Not Exist with Body and Status Code"
+    (let [res (resource {"text/html" (fn [request] {:body "testing"})}
+                        {:resource-exists? (fn [request]
+                                             [false
+                                              {:status 404
+                                               :body "I'm not sure what to say."
+                                               :headers {"content-type"
+                                                         "text/plain"}}])})
+          req test-request]
+      (let [response (run req res)]
+        (println "RESPONSE" response)
         (is (and (= 404 (:status response))
                  (= "I'm not sure what to say." (:body response))))))))
