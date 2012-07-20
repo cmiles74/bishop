@@ -235,7 +235,8 @@
   [resource request response]
   (let [suggested (suggested-content-type resource request response
                                           :default-content "text/plain")]
-    (merge-responses response
+    (merge-responses (assoc response :headers
+                            (dissoc (:headers response) "Content-Type"))
                      {:headers {"content-type" suggested}})))
 
 (defn add-body
@@ -491,7 +492,7 @@
                            (:status process-post)
                            request
                            process-post
-                           :state n11)
+                           state n11)
 
             :else
             #(p11 resource
