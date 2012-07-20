@@ -1010,6 +1010,5 @@
                                                          "text/plain"}}])})
           req test-request]
       (let [response (run req res)]
-        (println "RESPONSE" response)
         (is (and (= 404 (:status response))
                  (= "I'm not sure what to say." (:body response))))))))
