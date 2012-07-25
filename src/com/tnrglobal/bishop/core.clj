@@ -216,3 +216,9 @@
   [term]
   (resource {"*/*" (fn [request] {:status 500
                                   :body term})}))
+
+(defmacro defresource
+  "Convenience macro for defining a resource. See resource."
+  [name response-map handler-map]
+  `(def ~name
+     (resource ~response-map ~handler-map)))
