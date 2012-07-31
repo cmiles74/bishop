@@ -799,6 +799,18 @@
         (is (and (= 303 (:status response))
                  (= "/testing/new" ((:headers response) "Location")))))))
 
+  (testing "N11, Post is Create with Conflict"
+    (let [res (resource {"text/html" (fn [request]
+                                       {:body "testing"})}
+                        {:allowed-methods (fn [request] [:post])
+                         :allow-missing-post? (fn [request] true)
+                         :post-is-create? (fn [request] true)
+                         :is-conflict? (fn [request] true)
+                         :create-path (fn [request] "testing/new")})
+          req (assoc test-request :request-method :post)]
+      (let [response (run req res)]
+        (is (= 409 (:status response))))))
+
   (testing "N11, Post is Create, Bad Post, Body from Callback"
     (let [res (resource {"text/html" (fn [request]
                                        {:status 422
@@ -833,6 +845,17 @@
           req (assoc test-request :request-method :post)]
       (let [response (run req res)]
         (is (= 204 (:status response))))))
+
+  (testing "N11, Post is Not Create, No Body, Conflict"
+    (let [res (resource {"text/html" (fn [request]
+                                       {:body "testing"})}
+                        {:allowed-methods (fn [request] [:post])
+                         :post-is-create? (fn [request] false)
+                         :is-conflict? (fn [request] true)
+                         :process-post (fn [request] true)})
+          req (assoc test-request :request-method :post)]
+      (let [response (run req res)]
+        (is (= 409 (:status response))))))
 
   (testing "N11, Post is Not Create, Body"
     (let [res (resource {"text/html" (fn [request]

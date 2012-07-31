@@ -503,11 +503,19 @@
           :else
           (throw (Exception. (str "Process post invalid"))))))))
 
+(defn n16b
+  "Test if there is a conflict"
+  [resource request response state]
+  (apply-merge-callback-decide
+   request resource response :is-conflict?
+   #(response-code resource 409 request % state :n16b)
+   #(n11 resource request % (assoc state :n16b true))))
+
 (defn n16
   "Test if this is an HTTP POST request"
   [resource request response state]
   (if (= :post (:request-method request))
-    #(n11 resource request response (assoc state :n16 true))
+    #(n16b resource request response (assoc state :n16 true))
     #(o16 resource request response (assoc state :n16 false))))
 
 (defn n5
@@ -546,7 +554,7 @@
   [resource request response state]
   (apply-merge-callback-decide
    request resource response :allow-missing-post?
-   #(n11 resource request % (assoc state :m7 true))
+   #(n16b resource request % (assoc state :m7 true))
    #(response-code resource 404 request % state :m7)))
 
 (defn m5
