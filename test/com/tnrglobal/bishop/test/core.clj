@@ -91,3 +91,11 @@
                                             :scheme "http"
                                             :headers {"accept" "*/*"}})]
       (is (= 404 (:status response))))))
+
+(deftest handler-test
+  (testing "invalid route produces valid ring response"
+    (let [handler (handler {})
+          response-map (handler {:uri ""})]
+      (is (= 404 (:status response-map)))
+      (is (= {} (:headers response-map)))
+      )))

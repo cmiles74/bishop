@@ -168,7 +168,9 @@
 
         ;; we have an invalid route, no resource available
         :else
-        {:status 404 :body "Resource not found"}))))
+        {:status 404 
+         :headers {} 
+         :body "Resource not found"}))))
 
 (defn resource
   "Defines a new resource, these come in two different forms:
@@ -207,7 +209,8 @@
   merged into the outgoing response (for instance, if you wanted to
   provide a body)."
   [status & response-map]
-  (resource {"*/*" (fn [request] (merge {:status status}
+  (resource {"*/*" (fn [request] (merge {:status status
+                                         :headers {}}
                                         (first response-map)))}))
 
 (defn error-resource
@@ -215,6 +218,7 @@
   as the body."
   [term]
   (resource {"*/*" (fn [request] {:status 500
+                                  :headers {}
                                   :body term})}))
 
 (defmacro defresource
