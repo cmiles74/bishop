@@ -887,7 +887,7 @@
   [resource request response state]
   (let [acceptable (acceptable-content-type
                     resource (header-value "accept" (:headers request)))]
-    (if acceptable
+    (if (seq acceptable)
       #(d4 resource
            (assoc request :acceptable-type acceptable)
            response
