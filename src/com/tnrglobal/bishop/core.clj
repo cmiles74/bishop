@@ -32,88 +32,84 @@
   returned that contains the URI tokens, matched route and a map of
   the the route's keyword tokens to their respective URI tokens. If
   the route cannot be applied then nil is returned."
-  [uri-tokens route-and-handler]
+  [uri-tokens route]
 
-  ;; we only need the route
-  (let [route (first route-and-handler)]
-
-       ;; the route matches if it has the name number of tokens as the
-       ;; URI or less tokens than the URI and ends with "*". If we
-       ;; have a URI that tokenized to the empty set, it may match
-       ;; either the wildcard route ["*"] or the root route [].
-       (if (or (= (count route) (count uri-tokens))
-               (and (>= (count uri-tokens) (count route))
-                    (= "*" (last route)))
-               (and (not (seq uri-tokens))
-                    (= [] route))
-               (and (not (seq uri-tokens))
-                    (= ["*"] route)))
+  ;; the route matches if it has the name number of tokens as the
+  ;; URI or less tokens than the URI and ends with "*". If we
+  ;; have a URI that tokenized to the empty set, it may match
+  ;; either the wildcard route ["*"] or the root route [].
+  (if (or (= (count route) (count uri-tokens))
+          (and (>= (count uri-tokens) (count route))
+               (= "*" (last route)))
+          (and (not (seq uri-tokens))
+               (= [] route))
+          (and (not (seq uri-tokens))
+               (= ["*"] route)))
 
 
-         (cond
+    (cond
 
-           ;; the route is an exact match, we don't need to perform
-           ;; any more processing
-           (= route uri-tokens)
-           {:path-tokens uri-tokens}
+      ;; the route is an exact match, we don't need to perform
+      ;; any more processing
+      (= route uri-tokens)
+      {:path-tokens uri-tokens}
 
-           ;; the URI is the empty set as is the route, no more
-           ;; processing is needed
-           (and (not (seq uri-tokens)) (= route []))
-           {:path-tokens uri-tokens}
+      ;; the URI is the empty set as is the route, no more
+      ;; processing is needed
+      (and (not (seq uri-tokens)) (= route []))
+      {:path-tokens uri-tokens}
 
-           ;; the URI is the empty set and the route is the wildcard,
-           ;; no more processing is needed
-           (or (not (seq uri-tokens)) (= route ["*"]))
-           {:path-tokens uri-tokens}
+      ;; the URI is the empty set and the route is the wildcard,
+      ;; no more processing is needed
+      (or (not (seq uri-tokens)) (= route ["*"]))
+      {:path-tokens uri-tokens}
 
-           :else
-           ;; attempt to match the route to the URI tokens
-           (loop [rtoks route utoks (concat uri-tokens [nil]) info {}]
+      :else
+      ;; attempt to match the route to the URI tokens
+      (loop [rtoks route utoks (concat uri-tokens [nil]) info {}]
 
-             ;; loop as long as we have an info map and more URI tokens
-             (if (and info (seq (rest utoks)))
+        ;; loop as long as we have an info map and more URI tokens
+        (if (and info (seq (rest utoks)))
 
-               (recur
+          (recur
 
-                ;; either the next route token or a sequence containing the
-                ;; last route token (if it's a "*", it will match the rest
-                ;; of the URI tokens
-                (if (seq (rest rtoks))
-                  (rest rtoks) [(last rtoks)])
-                (rest utoks)
+           ;; either the next route token or a sequence containing the
+           ;; last route token (if it's a "*", it will match the rest
+           ;; of the URI tokens
+           (if (seq (rest rtoks))
+             (rest rtoks) [(last rtoks)])
+           (rest utoks)
 
-                ;; build up our path map
-                (cond
+           ;; build up our path map
+           (cond
 
-                  ;; if the route token is a keyword then it maps to this
-                  ;; URI token
-                  (keyword? (first rtoks))
-                  (assoc info (first rtoks) (first utoks))
+             ;; if the route token is a keyword then it maps to this
+             ;; URI token
+             (keyword? (first rtoks))
+             (assoc info (first rtoks) (first utoks))
 
-                  ;; if the route and URI tokens match, we can continue to
-                  ;; match tokens
-                  (= (first rtoks) (first utoks))
-                  info
+             ;; if the route and URI tokens match, we can continue to
+             ;; match tokens
+             (= (first rtoks) (first utoks))
+             info
 
-                  ;; if the route token is a start then it's a match to
-                  ;; this URI token and we can continue to match tokens
-                  (= "*" (first rtoks))
-                  info
+             ;; if the route token is a start then it's a match to
+             ;; this URI token and we can continue to match tokens
+             (= "*" (first rtoks))
+             info
 
-                  ;; this route token doesn't match this URI token meaning
-                  ;; that this route cannot be applied to this URI
-                  :else
-                  nil))
-               (if info
-                 {:path-tokens uri-tokens
-                  :path-info info})))))))
+             ;; this route token doesn't match this URI token meaning
+             ;; that this route cannot be applied to this URI
+             :else
+             nil))
+          (if info
+            {:path-tokens uri-tokens
+             :path-info info}))))))
 
 (defn select-route
-  "Returns a path info map containing the route that should handle the
-  response for the provided URI tokens, a mapping of route components
-  to URI components and the tokenized URI."
-  [routing-map uri-tokens]
+  "Returns a sequence containing the matching route, path-info and
+  resource that should handle the response for the provided URI tokens."
+  [routing-sequence uri-tokens]
 
   ;; the first matching route wins
   (first
@@ -122,17 +118,27 @@
    (filter #(not (nil? %))
 
            ;; map over all of the routs
-           (map (fn [route-in]
+           (map (fn [route-and-resource]
 
                   ;; try to match the route
-                  (let [path-info (match-route uri-tokens route-in)]
+                  (let [route-in (first route-and-resource)
+                        resource (second route-and-resource)
+                        path-info (match-route uri-tokens route-in)]
 
                     ;; if the route matches, return it and it's path
                     ;; info, otherwise nil
-                    (if path-info [(first route-in) path-info]
+                    (if path-info [(first route-in) path-info resource]
                         nil)))
 
-                routing-map))))
+                (partition 2 routing-sequence)))))
+
+(defmacro defroutes
+  "Convenience macro for creating new routes. The \"name\" will be the
+  var that will contain the new routes, the routes themselves should
+  be provided in the form of a route sequence folowed by the resource
+  that handles that route."
+  [name & routes]
+  `(def ~name [~@routes]))
 
 (defn raw-handler
   "Creates a new Bishop handler that will process incoming requests by
@@ -148,28 +154,30 @@
 (defn handler
   "Creates a new Bishop handler that will route requests to the
   appropriate resource function based on the values in the
-  routing-map."
-  [routing-map]
+  routing-sequence."
+  [routing-sequence]
 
   ;; return a ring handler function
   (fn [request]
 
     ;; tokenize the URL
-    (let [route-info (select-route routing-map
+    (let [route-info (select-route (if (fn? routing-sequence)
+                                     (routing-sequence) routing-sequence)
                                    (tokenize-uri (:uri request)))
-          route (if route-info (routing-map (first route-info)) nil)
-          path-info (if route-info (second route-info) nil)]
+          route (if route-info (first route-info) nil)
+          path-info (if route-info (second route-info) nil)
+          handler (if route-info (last route-info) nil)]
 
       (cond
 
         ;; run the route through the state machine
-        (map? route)
-        (run (merge request path-info) route)
+        (not (nil? handler))
+        (run (merge request path-info) handler)
 
         ;; we have an invalid route, no resource available
         :else
-        {:status 404 
-         :headers {} 
+        {:status 404
+         :headers {}
          :body "Resource not found"}))))
 
 (defn resource

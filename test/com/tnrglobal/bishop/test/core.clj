@@ -10,15 +10,15 @@
             [clojure.java.io :as io]
             [clojure.string :as string]))
 
-(def test-routes-webmachine
-  {["greet" :name] (resource {"text/plain"
-                              (fn [r]
-                                {:body (str "Hello, " (:name (:path-info r))
-                                            "!")})})
-   ["greet"] (resource {"text/plain" "Hello, Somebody Someone!"})
-   ["greeting" "*"] (resource {"text/plain" "Hola!"})
-   [] (resource {"text/plain" "Welcome to Test Resource"})
-   ["*"] (halt-resource 404 {:body (str "Dude, bogus page!")})})
+(defroutes test-routes-webmachine
+  ["greet" :name] (resource {"text/plain"
+                             (fn [r]
+                               {:body (str "Hello, " (:name (:path-info r))
+                                           "!")})})
+  ["greet"] (resource {"text/plain" "Hello, Somebody Someone!"})
+  ["greeting" "*"] (resource {"text/plain" "Hola!"})
+  [] (resource {"text/plain" "Welcome to Test Resource"})
+  ["*"] (halt-resource 404 {:body (str "Dude, bogus page!")}))
 
 (def test-handler-webmachine (handler test-routes-webmachine))
 
