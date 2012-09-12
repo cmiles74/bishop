@@ -1055,3 +1055,17 @@
       (let [response (run req res)]
         (is (and (= 404 (:status response))
                  (= "I'm not sure what to say." (:body response))))))))
+
+  (testing "Response returns a String"
+    (let [res (resource {"text/html" (fn [request] "testing")})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 200 (:status response))
+                 (= "testing" (:body response)))))))
+
+  (testing "Response returns a Integer"
+    (let [res (resource {"text/html" (fn [request] 42)})
+          req test-request]
+      (let [response (run req res)]
+        (is (and (= 200 (:status response))
+                 (= 42 (:body response)))))))

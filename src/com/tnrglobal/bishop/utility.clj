@@ -236,20 +236,28 @@
                                         (DateTimeZone/forID "GMT")))))
 
 (defn merge-responses
-  "Merges three responses into once complete response. Maps are merged
+  "Merges two responses into once complete response. Maps are merged
   into larger maps, nil values are replaced with non-nil values and
   all other values are combined into a sequence."
   [response-1 response-2]
-  (let [mr-out (merge-with (fn [former latter]
-                             (cond
+  (cond
 
-                               (and (map? former) (map? latter))
-                               (merge former latter)
+    ;; the response is a map, merge it with the response built so far
+    (map? response-2)
+    (let [mr-out (merge-with (fn [former latter]
+                               (cond
+                                 (and (map? former) (map? latter))
+                                 (merge former latter)
 
-                               (nil? latter)
-                               former
+                                 (nil? latter)
+                                 former
 
-                               :else
-                               latter))
-                           response-1 response-2)]
-    mr-out))
+                                 :else
+                                 latter))
+                             response-1 response-2)]
+      mr-out)
+
+    ;; the response is not a map, treat it as the body for our
+    ;; response
+    :else
+    (assoc response-1 :body response-2)))
