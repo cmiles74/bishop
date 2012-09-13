@@ -43,14 +43,24 @@ Plugboard is constructed on top of the excellent
 [Compojure](https://github.com/weavejester/compojure) library which in
 turn builds on Ring, this project instead builds on top of Ring
 directly. The web APIs that I have constructed so far have been coded
-on Ring and I don't want to pull Compojure into the mix.
+on Ring and I didn't want to pull Compojure into the mix.
+
+## Breaking Changes from 1.1.9 to 1.2.0
+
+The way routing is handled has been changed from version 1.2.0
+forward. Earlier versions of Bishop used a map for routing and this
+did not allow for the routing rules to be provided in any specific
+order (i.e., the wildcard route is last so only use it if nothing else
+matches). While this worked fine for smaller application, it makes
+more sense to provide ordered routes. From version 1.2.0 forward,
+routes are now specified as a sequence.
 
 ## Installation
 
 To use Bishop, add the following to your project’s “:dependencies”:
 
 ```
-[tnrglobal/bishop "1.1.8"]
+[tnrglobal/bishop "1.2.0"]
 ```
 
 ## How Does it Work?
@@ -92,9 +102,9 @@ This resource can return either HTML or JSON content, depending on the
 "path-info" map under the ":name" key. This comes from the routing.
 
 ```
-(def routes
-  {["hello" :name] hello-resource
-  ["*"] (bishop/halt-resource 404)})
+(defroutes routes
+  ["hello" :name] hello-resource
+  ["*"] (bishop/halt-resource 404))
 ```
 
 We route incoming request for "/hello/something" to our
@@ -108,8 +118,12 @@ Lastly, you can add this as your Ring handler function.
 
 ```
 (def app
-  (-> (bishop/handler routes)))
+  (-> (bishop/handler #'routes)))
 ```
+
+In this example we pass our routes to the handler as a var, this is
+done so that changes to the routes are visible in a running REPL
+session or through Ring's reloading middleware.
 
 ## Using Another Routing Library
 
@@ -137,10 +151,9 @@ resource. For instance, you might prefer
 	  (-> moustache-handler))
 
 Instead of asking Bishop to provide a resource equipped to handle it's
-own routing, instead we ask for a "raw" handler that expects routing
-to already have been handled. We can then plug-in Moustache and
-provide our Bishop resources as end-points. More examples are
-available in the
+own routing, we ask for a "raw" handler that expects routing to
+already have been handled. We can then plug-in Moustache and provide
+our Bishop resources as end-points. More examples are available in the
 [unit tests](https://github.com/tnr-global/bishop/blob/master/test/com/tnrglobal/bishop/test/core.clj#L25).
 
 ## What Else Does it Do?

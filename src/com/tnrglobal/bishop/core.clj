@@ -136,7 +136,21 @@
   "Convenience macro for creating new routes. The \"name\" will be the
   var that will contain the new routes, the routes themselves should
   be provided in the form of a route sequence folowed by the resource
-  that handles that route."
+  that handles that route. For example...
+
+    (defroutes my-routes [\"todos\"] todos-group-resource
+                         [\"todos\" :id] todos-item-resource
+                         [*] (halt-resource 404))
+
+  Our var \"my-routes\" will now contain the sequence of routes.
+
+    [[\"todos\"] todos-group-resource
+     [\"todos\" :id] todos-item-resource
+     [*] (halt-resource 404)]
+
+  When a request is received, routes are evaluated in order, the first
+  route that matches will be the one used and the request passed to
+  that resource function."
   [name & routes]
   `(def ~name [~@routes]))
 
@@ -154,15 +168,28 @@
 (defn handler
   "Creates a new Bishop handler that will route requests to the
   appropriate resource function based on the values in the
-  routing-sequence."
+  routing-sequence. The routing sequence is a sequence of routes, each
+  route being a sequence of tokens defining the route followed by a
+  Bishop resource. In nearly all cases it's easiest to use the
+  \"defroutes\" macro to assemble your routes and the \"defresource\"
+  macro to assemble your resources.
+
+  Note that if you'd like to see updates in the REPL flow through to
+  your running application (or if your using the Ring reload
+  middleware), you'll want to pass your routes to this function as a
+  var.
+
+    (def app (-> (handler #'my-routes)
+                 (wrap-params)))"
   [routing-sequence]
 
   ;; return a ring handler function
   (fn [request]
 
     ;; tokenize the URL
-    (let [route-info (select-route (if (fn? routing-sequence)
-                                     (routing-sequence) routing-sequence)
+    (let [route-info (select-route (if (var? routing-sequence)
+                                     (var-get routing-sequence)
+                                     routing-sequence)
                                    (tokenize-uri (:uri request)))
           route (if route-info (first route-info) nil)
           path-info (if route-info (second route-info) nil)
