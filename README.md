@@ -51,7 +51,7 @@ The way routing is handled has been changed from version 1.2.0
 forward. Earlier versions of Bishop used a map for routing and this
 did not allow for the routing rules to be provided in any specific
 order (i.e., the wildcard route is last so only use it if nothing else
-matches). While this worked fine for smaller application, it makes
+matches). While this worked fine for smaller applications, it makes
 more sense to provide ordered routes. From version 1.2.0 forward,
 routes are now specified as a sequence.
 
