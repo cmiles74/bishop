@@ -59,7 +59,7 @@ routes are now specified as a sequence.
 
 To use Bishop, add the following to your project’s “:dependencies”:
 
-```
+```clojure
 [tnrglobal/bishop "1.2.0"]
 ```
 
@@ -68,13 +68,13 @@ To use Bishop, add the following to your project’s “:dependencies”:
 Anyway, let's say you have a function that will say "Hello" to
 people. Add the `com.tnrglobal.bishop.core` namespace to your project.
 
-```
+```clojure
 (ns hello.core
   (:require [com.tnrglobal.bishop.core :as bishop]))
 ```
 We also define the function that does our work.
 
-```
+```clojure
 (defn hello
   [name]
   (str "Hello " name "!"))
@@ -85,7 +85,7 @@ this example we use [Hiccup](https://github.com/weavejester/hiccup) to
 generate our HTML and [CLJ-JSON](https://github.com/mmcgrana/clj-json)
 to generate our JSON output.
 
-```
+```clojure
 (def hello-resource
   (bishop/resource
     {"text/html" (fn [request]
@@ -101,7 +101,7 @@ This resource can return either HTML or JSON content, depending on the
 “Accept” headers of the request. It expects to have a value in the
 "path-info" map under the ":name" key. This comes from the routing.
 
-```
+```clojure
 (defroutes routes
   ["hello" :name] hello-resource
   ["*"] (bishop/halt-resource 404))
@@ -116,7 +116,7 @@ the goal is to do it in the same way that
 
 Lastly, you can add this as your Ring handler function.
 
-```
+```clojure
 (def app
   (-> (bishop/handler #'routes)))
 ```
@@ -133,23 +133,23 @@ If you'd like to use another routing library, you may use the
 handler that simply applies the incoming request to the Bishop
 resource. For instance, you might prefer
 [Moustache](https://github.com/cgrand/moustache).
+```clojure
+(def hello-resource
+  (bishop/raw-handler
+    (bishop/resource {"text/html"
+	                  (fn [request]
+					    (hiccup/html
+						  [:p (hello name)]))})))
 
-    (def hello-resource
-	  (bishop/raw-handler
-	    (bishop/resource {"text/html"
-		                  (fn [request]
-						    (hiccup/html
-							  [:p (hello name)]))})))
+(def moustache-handler
+  (moustache/app
+    ["hello" name] hello-resource
+	[&] (bishop/raw-handler
+	      (bishop/halt-resource 404))))
 
-    (def moustache-handler
-	  (moustache/app
-	    ["hello" name] hello-resource
-		[&] (bishop/raw-handler
-		      (bishop/halt-resource 404))))
-
-	(def app
-	  (-> moustache-handler))
-
+(def app
+  (-> moustache-handler))
+```
 Instead of asking Bishop to provide a resource equipped to handle it's
 own routing, we ask for a "raw" handler that expects routing to
 already have been handled. We can then plug-in Moustache and provide
