@@ -18,10 +18,10 @@ another if you like (for instance
 
 This is our first release of this library and there may be bugs that
 need squashing, please
-[register an issue](https://github.com/tnr-global/bishop/issues) if
+[register an issue](https://github.com/cmiles74/bishop/issues) if
 you notice any or send us a pull request if you fix them. We’re also
 providing
-[a sample application](https://github.com/tnr-global/bishop-sample)
+[a sample application](https://github.com/cmiles74/bishop-sample)
 that provides a more in-depth example. We’re working on implementing
 an application for production use that leverages this library, we
 expect to be polishing it further over the coming months.
@@ -154,7 +154,7 @@ Instead of asking Bishop to provide a resource equipped to handle it's
 own routing, we ask for a "raw" handler that expects routing to
 already have been handled. We can then plug-in Moustache and provide
 our Bishop resources as end-points. More examples are available in the
-[unit tests](https://github.com/tnr-global/bishop/blob/master/test/com/tnrglobal/bishop/test/core.clj#L25).
+[unit tests](https://github.com/cmiles74/bishop/blob/master/test/com/tnrglobal/bishop/test/core.clj#L25).
 
 ## What Else Does it Do?
 
@@ -185,8 +185,8 @@ And so on.
 ## Sample Application
 
 We have put a small,
-[sample application](https://github.com/tnr-global/bishop-sample) that
+[sample application](https://github.com/cmiles74/bishop-sample) that
 provides a more in-depth example. You may find it useful to look the
 sample code over to get a better idea of how Bishop functions.
 
-[https://github.com/tnr-global/bishop-sample](https://github.com/tnr-global/bishop-sample)
+[https://github.com/tnr-global/bishop-sample](https://github.com/cmiles74/bishop-sample)
