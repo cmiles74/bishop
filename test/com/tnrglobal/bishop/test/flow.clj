@@ -177,7 +177,7 @@
           req test-request]
       (is (= 200 (:status (run req res))))))
 
-  (testing "B8 Valid"
+  (testing "B8 Not Valid"
     (let [res (resource {"text/html" "testing"}
                         {:is-authorized? (fn [request] false)})
           req test-request]
@@ -199,6 +199,19 @@
                         {:is-authorized? (fn [request] true)})
           req test-request]
       (is (= 200 (:status (run req res))) "Authorized")))
+
+  (testing "B8 Not Authorized Specifies Response Map"
+    (let [res (resource {"text/html" "testing"}
+                        {:is-authorized? (fn [request] [false {:headers {"www-authenticate" "Basic"}
+                                                               :body "Unauthorized"}])})
+          req test-request
+          response (run req res)]
+      (is (= 401 (:status response)))
+      (is (= "Unauthorized" (:body response)))
+      (is (some (fn [[head value]]
+                  (and (= "Www-Authenticate" head)
+                    (= "Basic" value)))
+            (:headers response)) "Authenticate")))
 
   ;; forbidden?
 
