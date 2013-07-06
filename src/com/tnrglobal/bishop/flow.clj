@@ -979,7 +979,7 @@
       (and (coll? result)
            (= false (first result)))
       (response-code resource 401 request
-                     (merge-responses response (second response)) state :b8)
+                     (merge-responses response (second result)) state :b8)
 
       ;; not authorized and no authenticate header
       :else
