@@ -198,14 +198,13 @@
       (cond
 
         ;; run the route through the state machine
-        (not (nil? handler))
+        (and (not (nil? handler)) (not (nil? route)))
         (run (merge request path-info) handler)
 
         ;; we have an invalid route, no resource available
         :else
-        {:status 404
-         :headers {}
-         :body "Resource not found"}))))
+          nil
+        ))))
 
 (defn resource
   "Defines a new resource, these come in two different forms:
