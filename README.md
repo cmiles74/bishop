@@ -26,7 +26,10 @@ providing
 [a sample application](https://github.com/cmiles74/bishop-sample)
 that provides a more in-depth example. We’re working on implementing
 an application for production use that leverages this library, we
-expect to be polishing it further over the coming months.
+expect to be polishing it further over the coming months. If you find
+it useful in any way, please feel free to...
+
+<a href="https://www.buymeacoffee.com/cmiles74" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
 ## Aren't There Other Projects that Do This?
 
