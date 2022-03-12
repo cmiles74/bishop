@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/cmiles74/bishop.png?branch=master)](https://travis-ci.org/cmiles74/bishop)
+![Build Status](https://github.com/cmiles74/bishop/actions/workflows/continuous-integration.yml/badge.svg)
 
 Bishop is a [Webmachine](http://wiki.basho.com/Webmachine.html)-like
 library for Clojure. Bishop provides tools that make it easy and
