@@ -138,13 +138,12 @@ If you'd like to use another routing library, you may use the
 handler that simply applies the incoming request to the Bishop
 resource. For instance, you might prefer
 [Moustache](https://github.com/cgrand/moustache).
+
 ```clojure
 (def hello-resource
   (bishop/raw-handler
-    (bishop/resource {"text/html"
-	                  (fn [request]
-					    (hiccup/html
-						  [:p (hello name)]))})))
+    (bishop/resource {"text/html" 
+      (fn [request] (hiccup/html [:p (hello name)]))})))
 
 (def moustache-handler
   (moustache/app
@@ -155,6 +154,7 @@ resource. For instance, you might prefer
 (def app
   (-> moustache-handler))
 ```
+
 Instead of asking Bishop to provide a resource equipped to handle it's
 own routing, we ask for a "raw" handler that expects routing to
 already have been handled. We can then plug-in Moustache and provide
